@@ -1,0 +1,20 @@
+{
+  "name": "fresher-platform-load-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:100": "tsx socket-load-test.ts --clients 100",
+    "test:300": "tsx socket-load-test.ts --clients 300",
+    "test:500": "tsx socket-load-test.ts --clients 500",
+    "test:600": "tsx socket-load-test.ts --clients 600"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
