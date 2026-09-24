@@ -1,12 +1,19 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.drawNumber = exports.publishWinnerControl = exports.approveWinnerControl = exports.getGameResults = exports.closeGameControl = exports.nextQuestionControl = exports.startGameControl = exports.openGameControl = exports.getGameLibrary = exports.getDashboardMetrics = void 0;
+exports.resetAllStudentsControl = exports.drawNumber = exports.publishWinnerControl = exports.approveWinnerControl = exports.getGameResults = exports.closeGameControl = exports.nextQuestionControl = exports.startGameControl = exports.openGameControl = exports.getGameLibrary = exports.getDashboardMetrics = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const Game_js_1 = require("../models/Game.js");
 const Student_js_1 = require("../models/Student.js");
 const Winner_js_1 = require("../models/Winner.js");
+const Participant_js_1 = require("../models/Participant.js");
+const Submission_js_1 = require("../models/Submission.js");
 const Event_js_1 = require("../models/Event.js");
 const gameEngine_js_1 = require("../services/gameEngine.js");
 const cacheService_js_1 = require("../services/cacheService.js");
+const tokenService_js_1 = require("../services/tokenService.js");
 const pino_js_1 = require("../config/pino.js");
 const DEFAULT_GAMES = [
     {
@@ -64,15 +71,22 @@ const DEFAULT_GAMES = [
 ];
 const getDashboardMetrics = async (req, res) => {
     try {
-        let totalStudents = 0;
-        let onlineStudents = 0;
-        let totalGames = 8;
+        let totalStudents = cacheService_js_1.cacheService.getStudentCount();
+        let onlineStudents = cacheService_js_1.cacheService.getOnlineStudentCount();
+        let totalGames = DEFAULT_GAMES.length; // 4 core games
         let totalWinners = 0;
+        let totalTokens = 0;
         try {
-            totalStudents = await Student_js_1.Student.countDocuments();
-            onlineStudents = await Student_js_1.Student.countDocuments({ isOnline: true });
-            totalGames = await Game_js_1.Game.countDocuments() || 8;
-            totalWinners = await Winner_js_1.Winner.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED'] } });
+            const dbTotal = await Student_js_1.Student.countDocuments();
+            const dbOnline = await Student_js_1.Student.countDocuments({
+                isOnline: true,
+                lastActiveAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+            });
+            totalStudents = Math.max(totalStudents, dbTotal);
+            onlineStudents = Math.max(onlineStudents, dbOnline);
+            totalTokens = totalStudents;
+            const dbWinners = await Winner_js_1.Winner.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED'] } });
+            totalWinners = dbWinners;
         }
         catch (dbErr) { }
         const activeGame = cacheService_js_1.cacheService.getActiveGame();
@@ -292,3 +306,42 @@ const drawNumber = async (req, res) => {
     }
 };
 exports.drawNumber = drawNumber;
+const resetAllStudentsControl = async (req, res) => {
+    try {
+        // 1. Clear in-memory student cache & reset token counters
+        cacheService_js_1.cacheService.clearAllStudentSessions();
+        tokenService_js_1.TokenService.resetCounters();
+        // 2. Clear Database documents safely
+        try {
+            if (mongoose_1.default.connection.readyState === 1) {
+                await Student_js_1.Student.deleteMany({});
+                await Participant_js_1.Participant.deleteMany({});
+                await Submission_js_1.Submission.deleteMany({});
+                await Winner_js_1.Winner.deleteMany({});
+            }
+        }
+        catch (dbErr) {
+            pino_js_1.logger.error({ err: dbErr }, 'Error clearing DB documents during student reset');
+        }
+        // 3. Emit real-time force logout broadcast to all connected student sockets
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('FORCE_LOGOUT_ALL', { message: 'All student sessions reset by host.' });
+            io.emit('METRICS_UPDATED', {
+                totalStudents: 0,
+                onlineStudents: 0,
+                totalGames: 4,
+                totalTokens: 0
+            });
+        }
+        pino_js_1.logger.info('🗑️ ALL STUDENT SESSIONS & RECORDS PURGED BY ADMIN');
+        return res.json({
+            success: true,
+            message: 'All student records purged, tokens reset, and active sessions logged out.'
+        });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, error: 'Failed to reset student sessions' });
+    }
+};
+exports.resetAllStudentsControl = resetAllStudentsControl;

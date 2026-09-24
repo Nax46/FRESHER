@@ -12,7 +12,8 @@ import {
   getGameResults,
   approveWinnerControl,
   publishWinnerControl,
-  drawNumber
+  drawNumber,
+  resetAllStudentsControl
 } from '../controllers/adminController.js';
 import { getAuditoriumState, setAuditoriumState } from '../controllers/auditoriumController.js';
 import { authenticateAdmin } from '../middleware/auth.js';
@@ -42,6 +43,7 @@ router.get('/admin/games/:id/results', authenticateAdmin, getGameResults);
 router.post('/admin/winners/:winnerId/approve', authenticateAdmin, approveWinnerControl);
 router.post('/admin/winners/:winnerId/publish', authenticateAdmin, publishWinnerControl);
 router.post('/admin/draw-number', authenticateAdmin, drawNumber);
+router.post('/admin/reset-students', authenticateAdmin, resetAllStudentsControl);
 router.post('/admin/auditorium/state', authenticateAdmin, validateBody(updateAuditoriumSchema), setAuditoriumState);
 
 // Auditorium Read-Only Public API

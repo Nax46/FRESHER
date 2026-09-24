@@ -84,7 +84,7 @@ export const useManagementStore = create<ManagementState>((set) => ({
   metrics: {
     totalStudents: 0,
     onlineStudents: 0,
-    totalGames: 8,
+    totalGames: 4,
     totalWinners: 0,
     totalTokens: 0
   },

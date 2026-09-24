@@ -29,6 +29,7 @@ router.get('/admin/games/:id/results', auth_js_1.authenticateAdmin, adminControl
 router.post('/admin/winners/:winnerId/approve', auth_js_1.authenticateAdmin, adminController_js_1.approveWinnerControl);
 router.post('/admin/winners/:winnerId/publish', auth_js_1.authenticateAdmin, adminController_js_1.publishWinnerControl);
 router.post('/admin/draw-number', auth_js_1.authenticateAdmin, adminController_js_1.drawNumber);
+router.post('/admin/reset-students', auth_js_1.authenticateAdmin, adminController_js_1.resetAllStudentsControl);
 router.post('/admin/auditorium/state', auth_js_1.authenticateAdmin, (0, zodValidate_js_1.validateBody)(validators_js_1.updateAuditoriumSchema), auditoriumController_js_1.setAuditoriumState);
 // Auditorium Read-Only Public API
 router.get('/auditorium/state', auditoriumController_js_1.getAuditoriumState);

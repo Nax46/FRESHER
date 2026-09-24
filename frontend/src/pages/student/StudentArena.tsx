@@ -8,7 +8,7 @@ import axios from 'axios';
 
 export const StudentArena: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, availableGame, setAvailableGame, setLiveQuestion, setGameState, gameState, setSubmittedResult } = useStudentStore();
+  const { profile, availableGame, setAvailableGame, setLiveQuestion, setGameState, gameState, setSubmittedResult, reset } = useStudentStore();
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -74,8 +74,10 @@ export const StudentArena: React.FC = () => {
       setGameState('CLOSED');
     });
 
-    socket.on('WINNER_PUBLISHED', (data) => {
-      // Winner published broadcast
+    socket.on('FORCE_LOGOUT_ALL', (data) => {
+      reset();
+      alert(data?.message || 'Session reset by Host.');
+      navigate('/student');
     });
 
     return () => {
@@ -84,7 +86,7 @@ export const StudentArena: React.FC = () => {
       socket.off('GAME_STARTED');
       socket.off('QUESTION_CHANGED');
       socket.off('GAME_CLOSED');
-      socket.off('WINNER_PUBLISHED');
+      socket.off('FORCE_LOGOUT_ALL');
     };
   }, [profile]);
 

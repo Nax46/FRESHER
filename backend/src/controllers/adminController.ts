@@ -1,11 +1,15 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Game } from '../models/Game.js';
 import { Question } from '../models/Question.js';
 import { Student } from '../models/Student.js';
 import { Winner } from '../models/Winner.js';
+import { Participant } from '../models/Participant.js';
+import { Submission } from '../models/Submission.js';
 import { EventModel } from '../models/Event.js';
 import { gameEngine } from '../services/gameEngine.js';
 import { cacheService } from '../services/cacheService.js';
+import { TokenService } from '../services/tokenService.js';
 import { logger } from '../config/pino.js';
 
 const DEFAULT_GAMES = [
@@ -65,16 +69,24 @@ const DEFAULT_GAMES = [
 
 export const getDashboardMetrics = async (req: Request, res: Response) => {
   try {
-    let totalStudents = 0;
-    let onlineStudents = 0;
-    let totalGames = 8;
+    let totalStudents = cacheService.getStudentCount();
+    let onlineStudents = cacheService.getOnlineStudentCount();
+    let totalGames = DEFAULT_GAMES.length; // 4 core games
     let totalWinners = 0;
+    let totalTokens = 0;
 
     try {
-      totalStudents = await Student.countDocuments();
-      onlineStudents = await Student.countDocuments({ isOnline: true });
-      totalGames = await Game.countDocuments() || 8;
-      totalWinners = await Winner.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED'] } });
+      const dbTotal = await Student.countDocuments();
+      const dbOnline = await Student.countDocuments({
+        isOnline: true,
+        lastActiveAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+      });
+      totalStudents = Math.max(totalStudents, dbTotal);
+      onlineStudents = Math.max(onlineStudents, dbOnline);
+      totalTokens = totalStudents;
+
+      const dbWinners = await Winner.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED'] } });
+      totalWinners = dbWinners;
     } catch (dbErr) {}
 
     const activeGame = cacheService.getActiveGame();
@@ -287,5 +299,46 @@ export const drawNumber = async (req: Request, res: Response) => {
     return res.json({ success: true, data: drawn });
   } catch (error: any) {
     return res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+export const resetAllStudentsControl = async (req: Request, res: Response) => {
+  try {
+    // 1. Clear in-memory student cache & reset token counters
+    cacheService.clearAllStudentSessions();
+    TokenService.resetCounters();
+
+    // 2. Clear Database documents safely
+    try {
+      if (mongoose.connection.readyState === 1) {
+        await Student.deleteMany({});
+        await Participant.deleteMany({});
+        await Submission.deleteMany({});
+        await Winner.deleteMany({});
+      }
+    } catch (dbErr) {
+      logger.error({ err: dbErr }, 'Error clearing DB documents during student reset');
+    }
+
+    // 3. Emit real-time force logout broadcast to all connected student sockets
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('FORCE_LOGOUT_ALL', { message: 'All student sessions reset by host.' });
+      io.emit('METRICS_UPDATED', {
+        totalStudents: 0,
+        onlineStudents: 0,
+        totalGames: 4,
+        totalTokens: 0
+      });
+    }
+
+    logger.info('🗑️ ALL STUDENT SESSIONS & RECORDS PURGED BY ADMIN');
+
+    return res.json({
+      success: true,
+      message: 'All student records purged, tokens reset, and active sessions logged out.'
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: 'Failed to reset student sessions' });
   }
 };

@@ -15,7 +15,8 @@ import {
   Star,
   RefreshCw,
   LogOut,
-  Send
+  Send,
+  Trash2
 } from 'lucide-react';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
@@ -52,6 +53,16 @@ export const Dashboard: React.FC = () => {
     fetchDashboard();
     fetchLibrary();
 
+    socket.on('METRICS_UPDATED', (data) => {
+      setMetrics({
+        totalStudents: data.totalStudents,
+        onlineStudents: data.onlineStudents,
+        totalGames: data.totalGames || 4,
+        totalWinners: metrics.totalWinners,
+        totalTokens: data.totalTokens || data.totalStudents
+      });
+    });
+
     socket.on('PARTICIPANT_JOINED', (data) => {
       fetchDashboard();
     });
@@ -72,6 +83,7 @@ export const Dashboard: React.FC = () => {
     });
 
     return () => {
+      socket.off('METRICS_UPDATED');
       socket.off('PARTICIPANT_JOINED');
       socket.off('SUBMISSION_RECEIVED');
       socket.off('WINNER_CANDIDATE');
@@ -223,6 +235,23 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleResetAllStudents = async () => {
+    if (!window.confirm('⚠️ ARE YOU SURE? This will log out ALL active students immediately, clear all token numbers, and purge student database records!')) {
+      return;
+    }
+    try {
+      const res = await axios.post('/api/v1/admin/reset-students', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        alert('✅ ALL STUDENTS LOGGED OUT & PURGED SUCCESSFULLY!');
+        fetchDashboard();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to reset student sessions');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
       {/* Header Dashboard Banner */}
@@ -237,13 +266,21 @@ export const Dashboard: React.FC = () => {
           <p className="text-xs text-slate-400 mt-1">Live Management Operating System — Real-time event & audience synchronization</p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={fetchDashboard}
             className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Refresh</span>
+          </button>
+          <button
+            onClick={handleResetAllStudents}
+            className="p-2.5 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-200 rounded-xl text-xs font-extrabold transition-all flex items-center space-x-1.5 shadow-lg shadow-rose-900/30"
+            title="Log out all active students and purge all student database records"
+          >
+            <Trash2 className="w-4 h-4 text-rose-400" />
+            <span>Reset All Students</span>
           </button>
           <button
             onClick={() => { logout(); navigate('/management/login'); }}

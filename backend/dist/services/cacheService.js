@@ -24,6 +24,21 @@ class InMemoryCache {
         }
         return null;
     }
+    getStudentCount() {
+        const uniqueEnrollments = new Set();
+        for (const session of this.studentSessions.values()) {
+            if (session.enrollmentNo) {
+                uniqueEnrollments.add(session.enrollmentNo.toUpperCase());
+            }
+        }
+        return uniqueEnrollments.size;
+    }
+    getOnlineStudentCount() {
+        return this.getStudentCount();
+    }
+    clearAllStudentSessions() {
+        this.studentSessions.clear();
+    }
     clearActiveGame() {
         this.activeGame = null;
     }

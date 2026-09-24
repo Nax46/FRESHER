@@ -59,6 +59,24 @@ class InMemoryCache {
     return null;
   }
 
+  public getStudentCount(): number {
+    const uniqueEnrollments = new Set<string>();
+    for (const session of this.studentSessions.values()) {
+      if (session.enrollmentNo) {
+        uniqueEnrollments.add(session.enrollmentNo.toUpperCase());
+      }
+    }
+    return uniqueEnrollments.size;
+  }
+
+  public getOnlineStudentCount(): number {
+    return this.getStudentCount();
+  }
+
+  public clearAllStudentSessions(): void {
+    this.studentSessions.clear();
+  }
+
   public clearActiveGame(): void {
     this.activeGame = null;
   }
