@@ -16,14 +16,15 @@ export const enterEvent = async (req: Request, res: Response) => {
     const upperEnrollment = enrollmentNo.toUpperCase().trim();
     const cleanName = name.trim();
 
-    // 1. FAST PATH: Check memory cache first (< 1ms)
+    // 1. FAST PATH (Memory Cache): If student already logged in, reuse existing tokens & profile (< 1ms)
     const cachedStudent = cacheService.getStudentByEnrollment(upperEnrollment);
     if (cachedStudent) {
+      cachedStudent.name = cleanName;
       return res.json({
         success: true,
         data: {
           studentId: cachedStudent.studentId,
-          name: cachedStudent.name,
+          name: cleanName,
           enrollmentNo: cachedStudent.enrollmentNo,
           tokenNo: cachedStudent.tokenNo,
           luckyNo: cachedStudent.luckyNo,
@@ -33,7 +34,42 @@ export const enterEvent = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. INSTANT GENERATION: Generate tokens immediately
+    // 2. FAST DB LOOKUP: Check if student already exists in Database by enrollment number
+    let existingDbStudent: any = null;
+    try {
+      existingDbStudent = await Promise.race([
+        Student.findOne({ enrollmentNo: upperEnrollment }),
+        new Promise((res) => setTimeout(() => res(null), 200)) // 200ms timeout for fast response
+      ]);
+    } catch (err) {}
+
+    // If existing student found in DB -> REUSE existing student record & tokens!
+    if (existingDbStudent) {
+      const studentData = {
+        studentId: existingDbStudent._id.toString(),
+        name: cleanName,
+        enrollmentNo: existingDbStudent.enrollmentNo,
+        tokenNo: existingDbStudent.tokenNo,
+        luckyNo: existingDbStudent.luckyNo,
+        spotlightNo: existingDbStudent.spotlightNo,
+        sessionId: existingDbStudent.sessionId || v4.randomUUID()
+      };
+
+      // Register in memory cache for instant future lookups
+      cacheService.registerStudentSession(studentData.sessionId, studentData);
+      cacheService.registerStudentSession(upperEnrollment, studentData);
+      cacheService.registerStudentSession(studentData.studentId, studentData);
+
+      // Async background update for name & activity heartbeat
+      Student.findByIdAndUpdate(existingDbStudent._id, { name: cleanName, isOnline: true, lastActiveAt: new Date() }).catch(() => {});
+
+      return res.json({
+        success: true,
+        data: studentData
+      });
+    }
+
+    // 3. NEW STUDENT: Only generate new tokens if enrollment number does NOT exist in Cache or DB
     const tokens = await TokenService.generateUniqueTokens();
     const sessionId = v4.randomUUID();
     const studentId = `std_${Date.now()}_${tokens.tokenNo}`;
@@ -48,39 +84,37 @@ export const enterEvent = async (req: Request, res: Response) => {
       sessionId
     };
 
-    // 3. Register in memory cache immediately
+    // Register in memory cache immediately
     cacheService.registerStudentSession(sessionId, studentData);
     cacheService.registerStudentSession(upperEnrollment, studentData);
     cacheService.registerStudentSession(studentId, studentData);
 
-    // 4. Return instant response (< 5ms) to user
+    // Return instant response to user
     res.json({
       success: true,
       data: studentData
     });
 
-    // 5. Asynchronous background DB save without holding the HTTP response
+    // Asynchronous background DB creation using upsert to guarantee uniqueness
     (async () => {
       try {
-        let existing = await Student.findOne({ enrollmentNo: upperEnrollment });
-        if (!existing) {
-          await Student.create({
-            _id: studentId,
-            name: cleanName,
-            enrollmentNo: upperEnrollment,
-            tokenNo: tokens.tokenNo,
-            luckyNo: tokens.luckyNo,
-            spotlightNo: tokens.spotlightNo,
-            sessionId,
-            isOnline: true,
-            lastActiveAt: new Date()
-          });
-        } else {
-          existing.name = cleanName;
-          existing.isOnline = true;
-          existing.lastActiveAt = new Date();
-          await existing.save();
-        }
+        await Student.findOneAndUpdate(
+          { enrollmentNo: upperEnrollment },
+          {
+            $setOnInsert: {
+              _id: studentId,
+              name: cleanName,
+              enrollmentNo: upperEnrollment,
+              tokenNo: tokens.tokenNo,
+              luckyNo: tokens.luckyNo,
+              spotlightNo: tokens.spotlightNo,
+              sessionId,
+              registeredAt: new Date()
+            },
+            $set: { lastActiveAt: new Date(), isOnline: true, name: cleanName }
+          },
+          { upsert: true, new: true }
+        );
       } catch (dbErr) {
         logger.error({ err: dbErr }, 'Background DB save warning in enterEvent');
       }
