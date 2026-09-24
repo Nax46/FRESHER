@@ -32,7 +32,7 @@ export interface ActiveGameState {
 
 class InMemoryCache {
   private activeGame: ActiveGameState | null = null;
-  private studentSessions: Map<string, { studentId: string; name: string; enrollmentNo: string; tokenNo: number; luckyNo: number; spotlightNo: number }> = new Map();
+  private studentSessions: Map<string, { studentId: string; name: string; enrollmentNo: string; tokenNo: number; luckyNo: number; spotlightNo: number; sessionId?: string }> = new Map();
 
   public getActiveGame(): ActiveGameState | null {
     return this.activeGame;
@@ -42,12 +42,21 @@ class InMemoryCache {
     this.activeGame = game;
   }
 
-  public registerStudentSession(sessionId: string, studentData: { studentId: string; name: string; enrollmentNo: string; tokenNo: number; luckyNo: number; spotlightNo: number }): void {
+  public registerStudentSession(sessionId: string, studentData: { studentId: string; name: string; enrollmentNo: string; tokenNo: number; luckyNo: number; spotlightNo: number; sessionId?: string }): void {
     this.studentSessions.set(sessionId, studentData);
   }
 
   public getStudentBySession(sessionId: string) {
     return this.studentSessions.get(sessionId);
+  }
+
+  public getStudentByEnrollment(enrollmentNo: string) {
+    for (const session of this.studentSessions.values()) {
+      if (session.enrollmentNo.toUpperCase() === enrollmentNo.toUpperCase()) {
+        return session;
+      }
+    }
+    return null;
   }
 
   public clearActiveGame(): void {

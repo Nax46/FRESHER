@@ -16,72 +16,74 @@ const enterEvent = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Full Name and Enrollment Number are required.' });
         }
         const upperEnrollment = enrollmentNo.toUpperCase().trim();
-        let student = null;
-        try {
-            student = await Student_js_1.Student.findOne({ enrollmentNo: upperEnrollment });
+        const cleanName = name.trim();
+        // 1. FAST PATH: Check memory cache first (< 1ms)
+        const cachedStudent = cacheService_js_1.cacheService.getStudentByEnrollment(upperEnrollment);
+        if (cachedStudent) {
+            return res.json({
+                success: true,
+                data: {
+                    studentId: cachedStudent.studentId,
+                    name: cachedStudent.name,
+                    enrollmentNo: cachedStudent.enrollmentNo,
+                    tokenNo: cachedStudent.tokenNo,
+                    luckyNo: cachedStudent.luckyNo,
+                    spotlightNo: cachedStudent.spotlightNo,
+                    sessionId: cachedStudent.sessionId || upperEnrollment
+                }
+            });
         }
-        catch (dbErr) {
-            pino_js_1.logger.error({ err: dbErr }, 'DB lookup warning during enterEvent');
-        }
-        if (!student) {
-            const tokens = await tokenService_js_1.TokenService.generateUniqueTokens();
-            const sessionId = crypto_1.default.randomUUID();
-            try {
-                student = await Student_js_1.Student.create({
-                    name,
-                    enrollmentNo: upperEnrollment,
-                    tokenNo: tokens.tokenNo,
-                    luckyNo: tokens.luckyNo,
-                    spotlightNo: tokens.spotlightNo,
-                    sessionId,
-                    isOnline: true,
-                    lastActiveAt: new Date()
-                });
-            }
-            catch (createErr) {
-                pino_js_1.logger.error({ err: createErr }, 'Error creating student record in DB');
-                // Fallback object if DB write hits temporary network glitch
-                student = {
-                    _id: tokens.tokenNo,
-                    name,
-                    enrollmentNo: upperEnrollment,
-                    tokenNo: tokens.tokenNo,
-                    luckyNo: tokens.luckyNo,
-                    spotlightNo: tokens.spotlightNo,
-                    sessionId,
-                    isOnline: true
-                };
-            }
-        }
-        else {
-            student.name = name;
-            student.isOnline = true;
-            student.lastActiveAt = new Date();
-            if (!student.sessionId) {
-                student.sessionId = crypto_1.default.randomUUID();
-            }
-            student.save().catch(err => pino_js_1.logger.error({ err }, 'Error saving student update'));
-        }
-        cacheService_js_1.cacheService.registerStudentSession(student.sessionId || student.enrollmentNo, {
-            studentId: student._id.toString(),
-            name: student.name,
-            enrollmentNo: student.enrollmentNo,
-            tokenNo: student.tokenNo,
-            luckyNo: student.luckyNo,
-            spotlightNo: student.spotlightNo
-        });
-        return res.json({
+        // 2. INSTANT GENERATION: Generate tokens immediately
+        const tokens = await tokenService_js_1.TokenService.generateUniqueTokens();
+        const sessionId = crypto_1.default.randomUUID();
+        const studentId = `std_${Date.now()}_${tokens.tokenNo}`;
+        const studentData = {
+            studentId,
+            name: cleanName,
+            enrollmentNo: upperEnrollment,
+            tokenNo: tokens.tokenNo,
+            luckyNo: tokens.luckyNo,
+            spotlightNo: tokens.spotlightNo,
+            sessionId
+        };
+        // 3. Register in memory cache immediately
+        cacheService_js_1.cacheService.registerStudentSession(sessionId, studentData);
+        cacheService_js_1.cacheService.registerStudentSession(upperEnrollment, studentData);
+        cacheService_js_1.cacheService.registerStudentSession(studentId, studentData);
+        // 4. Return instant response (< 5ms) to user
+        res.json({
             success: true,
-            data: {
-                studentId: student._id.toString(),
-                name: student.name,
-                enrollmentNo: student.enrollmentNo,
-                tokenNo: student.tokenNo,
-                luckyNo: student.luckyNo,
-                spotlightNo: student.spotlightNo,
-                sessionId: student.sessionId
-            }
+            data: studentData
         });
+        // 5. Asynchronous background DB save without holding the HTTP response
+        (async () => {
+            try {
+                let existing = await Student_js_1.Student.findOne({ enrollmentNo: upperEnrollment });
+                if (!existing) {
+                    await Student_js_1.Student.create({
+                        _id: studentId,
+                        name: cleanName,
+                        enrollmentNo: upperEnrollment,
+                        tokenNo: tokens.tokenNo,
+                        luckyNo: tokens.luckyNo,
+                        spotlightNo: tokens.spotlightNo,
+                        sessionId,
+                        isOnline: true,
+                        lastActiveAt: new Date()
+                    });
+                }
+                else {
+                    existing.name = cleanName;
+                    existing.isOnline = true;
+                    existing.lastActiveAt = new Date();
+                    await existing.save();
+                }
+            }
+            catch (dbErr) {
+                pino_js_1.logger.error({ err: dbErr }, 'Background DB save warning in enterEvent');
+            }
+        })();
+        return;
     }
     catch (error) {
         pino_js_1.logger.error({ err: error }, 'Critical error in enterEvent');
@@ -92,42 +94,8 @@ exports.enterEvent = enterEvent;
 const getStudentStatus = async (req, res) => {
     try {
         const studentId = req.params.studentId;
-        let student = null;
-        try {
-            student = await Student_js_1.Student.findByIdAndUpdate(studentId, { lastActiveAt: new Date(), isOnline: true }, { new: true });
-        }
-        catch (dbErr) { }
-        if (!student) {
-            // Fallback lookup from session cache
-            const activeGame = cacheService_js_1.cacheService.getActiveGame();
-            let availableGame = null;
-            if (activeGame && (activeGame.status === 'OPEN' || activeGame.status === 'LIVE')) {
-                availableGame = {
-                    gameId: activeGame.gameId,
-                    title: activeGame.title,
-                    type: activeGame.type,
-                    status: activeGame.status,
-                    timeLimit: activeGame.timeLimit,
-                    prize: activeGame.prize,
-                    hasJoined: activeGame.joinedStudentIds.has(studentId),
-                    hasSubmitted: activeGame.submissions.has(studentId)
-                };
-            }
-            return res.json({
-                success: true,
-                data: {
-                    student: {
-                        id: studentId,
-                        name: 'Fresher Participant',
-                        enrollmentNo: 'EN2026',
-                        tokenNo: 1,
-                        luckyNo: 101,
-                        spotlightNo: 11
-                    },
-                    availableGame
-                }
-            });
-        }
+        // Check in-memory session first
+        const cachedStudent = cacheService_js_1.cacheService.getStudentBySession(studentId) || cacheService_js_1.cacheService.getStudentByEnrollment(studentId);
         const activeGame = cacheService_js_1.cacheService.getActiveGame();
         let availableGame = null;
         if (activeGame && (activeGame.status === 'OPEN' || activeGame.status === 'LIVE')) {
@@ -142,16 +110,25 @@ const getStudentStatus = async (req, res) => {
                 hasSubmitted: activeGame.submissions.has(studentId)
             };
         }
+        // Trigger DB heartbeat asynchronously in background without blocking response
+        Student_js_1.Student.findByIdAndUpdate(studentId, { lastActiveAt: new Date(), isOnline: true }).catch(() => { });
         return res.json({
             success: true,
             data: {
-                student: {
-                    id: student._id,
-                    name: student.name,
-                    enrollmentNo: student.enrollmentNo,
-                    tokenNo: student.tokenNo,
-                    luckyNo: student.luckyNo,
-                    spotlightNo: student.spotlightNo
+                student: cachedStudent ? {
+                    id: cachedStudent.studentId,
+                    name: cachedStudent.name,
+                    enrollmentNo: cachedStudent.enrollmentNo,
+                    tokenNo: cachedStudent.tokenNo,
+                    luckyNo: cachedStudent.luckyNo,
+                    spotlightNo: cachedStudent.spotlightNo
+                } : {
+                    id: studentId,
+                    name: 'Fresher Participant',
+                    enrollmentNo: 'EN2026',
+                    tokenNo: 1,
+                    luckyNo: 101,
+                    spotlightNo: 11
                 },
                 availableGame
             }

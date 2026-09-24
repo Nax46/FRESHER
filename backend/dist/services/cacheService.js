@@ -16,6 +16,14 @@ class InMemoryCache {
     getStudentBySession(sessionId) {
         return this.studentSessions.get(sessionId);
     }
+    getStudentByEnrollment(enrollmentNo) {
+        for (const session of this.studentSessions.values()) {
+            if (session.enrollmentNo.toUpperCase() === enrollmentNo.toUpperCase()) {
+                return session;
+            }
+        }
+        return null;
+    }
     clearActiveGame() {
         this.activeGame = null;
     }
