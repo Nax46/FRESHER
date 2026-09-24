@@ -464,15 +464,46 @@ class GameEngine {
         winner.approvedBy = approvedBy;
         winner.approvedAt = new Date();
         await winner.save();
-        await Game_js_1.Game.findByIdAndUpdate(winner.gameId, { status: 'APPROVED' });
+        try {
+            if (mongoose_1.default.Types.ObjectId.isValid(winner.gameId?._id ? winner.gameId._id.toString() : winner.gameId?.toString())) {
+                await Game_js_1.Game.findByIdAndUpdate(winner.gameId, { status: 'APPROVED' });
+            }
+        }
+        catch (err) { }
         const student = winner.studentId;
         const game = winner.gameId;
+        const auditPayload = {
+            gameTitle: game ? game.title : 'Fresher Challenge',
+            winnerName: student ? student.name : 'Winner Student',
+            tokenNo: student ? student.tokenNo : 0,
+            prize: winner.prizeAmount || 50,
+            responseTimeMs: winner.responseTimeMs
+        };
+        try {
+            await Event_js_1.EventModel.findOneAndUpdate({ code: 'FRESHER2026' }, {
+                auditoriumState: {
+                    state: 'WINNER_PUBLISHED',
+                    payload: auditPayload,
+                    updatedAt: new Date()
+                }
+            });
+        }
+        catch (err) { }
         if (this.io) {
             this.io.to(`management:${eventId}`).to('management:FRESHER2026').emit('WINNER_APPROVED', {
                 winnerId: winner._id,
-                studentName: student.name,
-                tokenNo: student.tokenNo,
-                gameTitle: game.title
+                studentName: student ? student.name : 'Winner',
+                tokenNo: student ? student.tokenNo : 0,
+                gameTitle: game ? game.title : ''
+            });
+            this.io.to(`auditorium:${eventId}`).to('auditorium:FRESHER2026').emit('AUDITORIUM_UPDATED', {
+                state: 'WINNER_PUBLISHED',
+                payload: auditPayload
+            });
+            this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('WINNER_PUBLISHED', {
+                gameTitle: game ? game.title : 'Fresher Challenge',
+                winnerName: student ? student.name : 'Winner Student',
+                tokenNo: student ? student.tokenNo : 0
             });
         }
         return winner;

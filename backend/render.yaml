@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: fresher-event-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        value: mongodb+srv://chaudharynax27_db_user:Nax-2903@cluster0.8f3mgjg.mongodb.net/fresher_event_db
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: JWT_SECRET
+        value: fresher_secret_jwt_2026_prod
