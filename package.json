@@ -1,11 +1,5 @@
 {
   "name": "fresher-platform-monorepo",
   "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "npm run --prefix frontend build",
-    "build:backend": "npm run --prefix backend build",
-    "build:frontend": "npm run --prefix frontend build",
-    "start": "npm start --prefix backend"
-  }
+  "private": true
 }
