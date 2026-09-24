@@ -182,12 +182,15 @@ export const StudentArena: React.FC = () => {
                 <span>{joining ? 'Joining...' : 'ENTER GAME'}</span>
               </button>
             ) : (
-              <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-4 text-center space-y-1">
-                <div className="flex items-center justify-center space-x-1.5 text-emerald-400 font-extrabold text-sm">
-                  <CheckCircle className="w-4 h-4" />
-                  <span>YOU HAVE ENTERED THE GAME</span>
+              <div className="bg-gradient-to-br from-emerald-950/60 to-slate-900 border border-emerald-500/40 rounded-xl p-5 text-center space-y-2">
+                <div className="flex items-center justify-center space-x-2 text-emerald-400 font-black text-base">
+                  <CheckCircle className="w-5 h-5" />
+                  <span>ENTERED: {availableGame.title}</span>
                 </div>
-                <p className="text-xs text-slate-300">Waiting for host to start the timer...</p>
+                <div className="flex items-center justify-center space-x-2 text-amber-300 text-xs font-bold bg-amber-500/10 py-1.5 px-3 rounded-lg border border-amber-500/20">
+                  <Hourglass className="w-4 h-4 animate-spin text-amber-400" />
+                  <span>Waiting for host to start the game...</span>
+                </div>
               </div>
             )}
           </div>

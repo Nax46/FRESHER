@@ -15,19 +15,6 @@ export const INITIAL_GAMES = [
     totalQuestions: 10
   },
   {
-    _id: 'game_lyrics_02',
-    title: '🎵 Finish the Lyrics',
-    subtitle: 'Complete the missing song line before anyone else',
-    type: 'SPEED_MCQ',
-    status: 'READY',
-    timeLimit: 30,
-    prize: 50,
-    attemptRule: 'ONE_ATTEMPT',
-    winnerRule: 'FIRST_CORRECT',
-    description: 'Test your Bollywood music knowledge in real-time!',
-    totalQuestions: 10
-  },
-  {
     _id: 'game_quote_03',
     title: '👀 Who Said This?',
     subtitle: 'Identify which iconic professor or celebrity said this quote',
@@ -64,45 +51,6 @@ export const INITIAL_GAMES = [
     attemptRule: 'ONE_ATTEMPT',
     winnerRule: 'JUDGE_SCORE',
     description: 'Visual memory test for spotlight selected student!',
-    totalQuestions: 5
-  },
-  {
-    _id: 'game_faculty_06',
-    title: '🎯 Faculty 1v1',
-    subtitle: 'Student vs Faculty stage showdown',
-    type: 'LUCKY_NUMBER',
-    status: 'READY',
-    timeLimit: 120,
-    prize: 200,
-    attemptRule: 'ONE_ATTEMPT',
-    winnerRule: 'MANUAL_SELECT',
-    description: 'Draw Lucky Number → Student competes live against a professor!',
-    totalQuestions: 5
-  },
-  {
-    _id: 'game_audience_07',
-    title: '🙈 Never Have I Ever',
-    subtitle: 'Audience interactive participation',
-    type: 'AUDIENCE',
-    status: 'READY',
-    timeLimit: 60,
-    prize: 0,
-    attemptRule: 'MULTIPLE_ATTEMPTS',
-    winnerRule: 'MANUAL_SELECT',
-    description: 'Fun ice-breaking audience poll.',
-    totalQuestions: 5
-  },
-  {
-    _id: 'game_physical_08',
-    title: '⚡ 30-Second Challenge',
-    subtitle: 'Physical quick task on stage',
-    type: 'PHYSICAL',
-    status: 'READY',
-    timeLimit: 30,
-    prize: 50,
-    attemptRule: 'ONE_ATTEMPT',
-    winnerRule: 'MANUAL_SELECT',
-    description: 'Physical rapid-fire activity on stage.',
     totalQuestions: 5
   }
 ];
