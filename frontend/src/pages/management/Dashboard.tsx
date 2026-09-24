@@ -120,30 +120,31 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleOpenGame = async (gameId: string) => {
+    const selected = gameLibrary.find(g => g._id === gameId);
+    // Instant 0ms Optimistic UI Update
+    if (selected) {
+      setCurrentGame({
+        gameId: selected._id,
+        title: selected.title,
+        type: selected.type,
+        status: 'OPEN',
+        joinedCount: 0,
+        totalSubmissions: 0,
+        currentQuestionIndex: 0,
+        totalQuestions: selected.totalQuestions || 3
+      });
+    }
+    const element = document.getElementById('current-game-control');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     try {
-      const res = await axios.post(`/api/v1/admin/games/${gameId}/open`, {}, {
+      await axios.post(`/api/v1/admin/games/${gameId}/open`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.data.success && res.data.data) {
-        setCurrentGame({
-          gameId: res.data.data.gameId,
-          title: res.data.data.title,
-          type: res.data.data.type,
-          status: 'OPEN',
-          joinedCount: 0,
-          totalSubmissions: 0,
-          currentQuestionIndex: 0,
-          totalQuestions: res.data.data.totalQuestions || 1
-        });
-      }
-      fetchDashboard();
-      fetchLibrary();
-      const element = document.getElementById('current-game-control');
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to open game');
     }
@@ -151,11 +152,13 @@ export const Dashboard: React.FC = () => {
 
   const handleStartGame = async () => {
     if (!currentGame) return;
+    // Instant 0ms Optimistic UI Update
+    setCurrentGame({ ...currentGame, status: 'LIVE' });
+
     try {
       await axios.post(`/api/v1/admin/games/${currentGame.gameId}/start`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      fetchDashboard();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to start game');
     }
@@ -163,6 +166,9 @@ export const Dashboard: React.FC = () => {
 
   const handleCloseGame = async () => {
     if (!currentGame) return;
+    // Instant 0ms Optimistic UI Update
+    setCurrentGame({ ...currentGame, status: 'CLOSED' });
+
     try {
       const res = await axios.post(`/api/v1/admin/games/${currentGame.gameId}/close`, {}, {
         headers: { Authorization: `Bearer ${token}` }
@@ -170,7 +176,6 @@ export const Dashboard: React.FC = () => {
       if (res.data.success && res.data.data.winnerCandidate) {
         setWinnerCandidate(res.data.data.winnerCandidate);
       }
-      fetchDashboard();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to close game');
     }

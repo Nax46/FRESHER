@@ -161,11 +161,7 @@ export const getGameLibrary = async (req: Request, res: Response) => {
 
 export const openGameControl = async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  let event = null;
-  try {
-    event = await EventModel.findOne({});
-  } catch (err) {}
-  const eventId = event ? event._id.toString() : 'FRESHER2026';
+  const eventId = 'FRESHER2026';
 
   try {
     const active = await gameEngine.openGame(id, eventId);
@@ -177,11 +173,7 @@ export const openGameControl = async (req: Request, res: Response) => {
 
 export const startGameControl = async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  let event = null;
-  try {
-    event = await EventModel.findOne({});
-  } catch (err) {}
-  const eventId = event ? event._id.toString() : 'FRESHER2026';
+  const eventId = 'FRESHER2026';
 
   try {
     const active = await gameEngine.startGame(id, eventId);
@@ -193,11 +185,7 @@ export const startGameControl = async (req: Request, res: Response) => {
 
 export const nextQuestionControl = async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  let event = null;
-  try {
-    event = await EventModel.findOne({});
-  } catch (err) {}
-  const eventId = event ? event._id.toString() : 'FRESHER2026';
+  const eventId = 'FRESHER2026';
 
   try {
     const active = await gameEngine.nextQuestion(id, eventId);
@@ -209,11 +197,7 @@ export const nextQuestionControl = async (req: Request, res: Response) => {
 
 export const closeGameControl = async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  let event = null;
-  try {
-    event = await EventModel.findOne({});
-  } catch (err) {}
-  const eventId = event ? event._id.toString() : 'FRESHER2026';
+  const eventId = 'FRESHER2026';
 
   try {
     const result = await gameEngine.closeGame(id, eventId);
@@ -256,11 +240,7 @@ export const getGameResults = async (req: Request, res: Response) => {
 
 export const approveWinnerControl = async (req: Request, res: Response) => {
   const winnerId = req.params.winnerId as string;
-  let event = null;
-  try {
-    event = await EventModel.findOne({});
-  } catch (err) {}
-  const eventId = event ? event._id.toString() : 'FRESHER2026';
+  const eventId = 'FRESHER2026';
 
   try {
     const winner = await gameEngine.approveWinner(winnerId, 'Management Admin', eventId);
@@ -272,11 +252,7 @@ export const approveWinnerControl = async (req: Request, res: Response) => {
 
 export const publishWinnerControl = async (req: Request, res: Response) => {
   const winnerId = req.params.winnerId as string;
-  let event = null;
-  try {
-    event = await EventModel.findOne({});
-  } catch (err) {}
-  const eventId = event ? event._id.toString() : 'FRESHER2026';
+  const eventId = 'FRESHER2026';
 
   try {
     const winner = await gameEngine.publishWinner(winnerId, eventId);
@@ -288,11 +264,7 @@ export const publishWinnerControl = async (req: Request, res: Response) => {
 
 export const drawNumber = async (req: Request, res: Response) => {
   const { type } = req.body;
-  let event = null;
-  try {
-    event = await EventModel.findOne({});
-  } catch (err) {}
-  const eventId = event ? event._id.toString() : 'FRESHER2026';
+  const eventId = 'FRESHER2026';
 
   try {
     const drawn = await gameEngine.drawRandomNumber(type, eventId);

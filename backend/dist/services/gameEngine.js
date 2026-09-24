@@ -21,173 +21,70 @@ class GameEngine {
         this.io = io;
     }
     async openGame(gameId, eventId) {
-        let game = null;
-        try {
-            if (mongoose_1.default.Types.ObjectId.isValid(gameId)) {
-                game = await Game_js_1.Game.findById(gameId);
+        const defaultGamesList = [
+            {
+                _id: 'game_emoji_01',
+                title: '😂 Guess the Emoji',
+                type: 'SPEED_MCQ',
+                timeLimit: 30,
+                prize: 50,
+                questions: [
+                    { id: 'q1', questionText: 'What movie does this represent?', mediaContent: '🦁 + 👑', options: ['Jungle Book', 'Lion King', 'Madagascar', 'Simba'], correctOptionIndex: 1, order: 1 },
+                    { id: 'q2', questionText: 'Which blockbuster movie is this?', mediaContent: '🕷️ + 👨', options: ['Batman', 'Iron Man', 'Spider-Man', 'Superman'], correctOptionIndex: 2, order: 2 },
+                    { id: 'q3', questionText: 'Guess the iconic movie title!', mediaContent: '🚢 + ❄️ + 🧊', options: ['Titanic', 'Avatar', 'Pirates of Caribbean', 'Life of Pi'], correctOptionIndex: 0, order: 3 }
+                ]
+            },
+            {
+                _id: 'game_quote_03',
+                title: '👀 Who Said This?',
+                type: 'SPEED_MCQ',
+                timeLimit: 20,
+                prize: 50,
+                questions: [
+                    { id: 'q1', questionText: 'Who said: "Mogambo Khush Hua!"?', mediaContent: '💬 "Mogambo Khush Hua!"', options: ['Gabbar Singh', 'Crime Master Gogo', 'Mogambo', 'Shakal'], correctOptionIndex: 2, order: 1 }
+                ]
+            },
+            {
+                _id: 'game_dialogue_04',
+                title: '🎬 Complete the Dialogue',
+                type: 'SPOTLIGHT_CHALLENGE',
+                timeLimit: 60,
+                prize: 100,
+                questions: [
+                    { id: 'q1', questionText: 'Complete this famous dialogue on stage!', mediaContent: '🎭 "Mogambo..."', options: ['Pass', 'Fail'], correctOptionIndex: 0, order: 1 }
+                ]
+            },
+            {
+                _id: 'game_memory_05',
+                title: '🧠 Memory Challenge',
+                type: 'SPOTLIGHT_CHALLENGE',
+                timeLimit: 60,
+                prize: 100,
+                questions: [
+                    { id: 'q1', questionText: 'Recall the sequence shown on screen!', mediaContent: '🍎 🚗 🎸 🐱 ⚽', options: ['Correct 8+', 'Correct <8'], correctOptionIndex: 0, order: 1 }
+                ]
             }
-            else {
-                game = await Game_js_1.Game.findOne({ _id: gameId });
-            }
-        }
-        catch (err) { }
-        if (!game) {
-            try {
-                game = await Game_js_1.Game.findOne({ title: { $regex: gameId.replace(/^game_/, '').replace(/_\d+$/, ''), $options: 'i' } });
-            }
-            catch (err) { }
-        }
-        if (!game) {
-            // Fallback default games mapping
-            const defaultGamesList = [
-                {
-                    _id: 'game_emoji_01',
-                    title: '😂 Guess the Emoji',
-                    type: 'SPEED_MCQ',
-                    timeLimit: 30,
-                    prize: 50,
-                    questions: [
-                        { id: 'q1', questionText: 'What movie does this represent?', mediaContent: '🦁 + 👑', options: ['Jungle Book', 'Lion King', 'Madagascar', 'Simba'], correctOptionIndex: 1, order: 1 },
-                        { id: 'q2', questionText: 'Which blockbuster movie is this?', mediaContent: '🕷️ + 👨', options: ['Batman', 'Iron Man', 'Spider-Man', 'Superman'], correctOptionIndex: 2, order: 2 },
-                        { id: 'q3', questionText: 'Guess the iconic movie title!', mediaContent: '🚢 + ❄️ + 🧊', options: ['Titanic', 'Avatar', 'Pirates of Caribbean', 'Life of Pi'], correctOptionIndex: 0, order: 3 }
-                    ]
-                },
-                {
-                    _id: 'game_lyrics_02',
-                    title: '🎵 Finish the Lyrics',
-                    type: 'SPEED_MCQ',
-                    timeLimit: 30,
-                    prize: 50,
-                    questions: [
-                        { id: 'q1', questionText: 'Complete the lyric: "Apna Time _____!"', mediaContent: '🎤 "Apna Time _____!"', options: ['Kab Aayega', 'Aayega', 'Aa Gaya', 'Hoga'], correctOptionIndex: 1, order: 1 },
-                        { id: 'q2', questionText: 'Complete the line: "Tum hi ho, ab tum hi ho..."', mediaContent: '🎵 "Tum hi ho..."', options: ['Meri Tum', 'Ab Tum Hi Ho', 'Bas Tum Hi', 'Har Pal Tum'], correctOptionIndex: 1, order: 2 }
-                    ]
-                },
-                {
-                    _id: 'game_quote_03',
-                    title: '👀 Who Said This?',
-                    type: 'SPEED_MCQ',
-                    timeLimit: 20,
-                    prize: 50,
-                    questions: [
-                        { id: 'q1', questionText: 'Who said: "Mogambo Khush Hua!"?', mediaContent: '💬 "Mogambo Khush Hua!"', options: ['Gabbar Singh', 'Crime Master Gogo', 'Mogambo', 'Shakal'], correctOptionIndex: 2, order: 1 }
-                    ]
-                },
-                {
-                    _id: 'game_dialogue_04',
-                    title: '🎬 Complete the Dialogue',
-                    type: 'SPOTLIGHT_CHALLENGE',
-                    timeLimit: 60,
-                    prize: 100,
-                    questions: [
-                        { id: 'q1', questionText: 'Complete this famous dialogue on stage!', mediaContent: '🎭 "Mogambo..."', options: ['Pass', 'Fail'], correctOptionIndex: 0, order: 1 }
-                    ]
-                },
-                {
-                    _id: 'game_memory_05',
-                    title: '🧠 Memory Challenge',
-                    type: 'SPOTLIGHT_CHALLENGE',
-                    timeLimit: 60,
-                    prize: 100,
-                    questions: [
-                        { id: 'q1', questionText: 'Recall the sequence shown on screen!', mediaContent: '🍎 🚗 🎸 🐱 ⚽', options: ['Correct 8+', 'Correct <8'], correctOptionIndex: 0, order: 1 }
-                    ]
-                },
-                {
-                    _id: 'game_faculty_06',
-                    title: '🎯 Faculty 1v1',
-                    type: 'LUCKY_NUMBER',
-                    timeLimit: 120,
-                    prize: 200,
-                    questions: [
-                        { id: 'q1', questionText: 'Student vs Faculty Showdown!', mediaContent: '🏆 Stage Challenge', options: ['Student Wins', 'Faculty Wins'], correctOptionIndex: 0, order: 1 }
-                    ]
-                },
-                {
-                    _id: 'game_audience_07',
-                    title: '🙈 Never Have I Ever',
-                    type: 'AUDIENCE',
-                    timeLimit: 60,
-                    prize: 0,
-                    questions: [
-                        { id: 'q1', questionText: 'Never Have I Ever slept in a lecture!', mediaContent: '🙈 Audience Poll', options: ['I Have', 'I Never'], correctOptionIndex: 0, order: 1 }
-                    ]
-                },
-                {
-                    _id: 'game_physical_08',
-                    title: '⚡ 30-Second Challenge',
-                    type: 'PHYSICAL',
-                    timeLimit: 30,
-                    prize: 50,
-                    questions: [
-                        { id: 'q1', questionText: 'Rapid-fire 30-second physical challenge!', mediaContent: '⚡ 30 Seconds', options: ['Completed', 'Failed'], correctOptionIndex: 0, order: 1 }
-                    ]
-                }
-            ];
-            const found = defaultGamesList.find(g => g._id === gameId) || defaultGamesList[0];
-            game = {
-                _id: found._id,
-                title: found.title,
-                type: found.type,
-                timeLimit: found.timeLimit,
-                prize: found.prize,
-                status: 'OPEN',
-                save: async () => { }
-            };
-        }
-        let dbQuestions = [];
-        try {
-            dbQuestions = await Question_js_1.Question.find({ gameId }).sort({ order: 1 });
-        }
-        catch (err) { }
-        let questionsList = dbQuestions.map(q => ({
-            id: q._id.toString(),
-            questionText: q.questionText,
-            mediaContent: q.mediaContent,
-            options: q.options,
-            correctOptionIndex: q.correctOptionIndex,
-            order: q.order
-        }));
-        if (questionsList.length === 0) {
-            // Default questions fallback
-            questionsList = [
-                { id: 'q1', questionText: 'What movie does this represent?', mediaContent: '🦁 + 👑', options: ['Jungle Book', 'Lion King', 'Madagascar', 'Simba'], correctOptionIndex: 1, order: 1 },
-                { id: 'q2', questionText: 'Which blockbuster movie is this?', mediaContent: '🕷️ + 👨', options: ['Batman', 'Iron Man', 'Spider-Man', 'Superman'], correctOptionIndex: 2, order: 2 },
-                { id: 'q3', questionText: 'Guess the iconic movie title!', mediaContent: '🚢 + ❄️ + 🧊', options: ['Titanic', 'Avatar', 'Pirates of Caribbean', 'Life of Pi'], correctOptionIndex: 0, order: 3 }
-            ];
-        }
+        ];
+        const foundDefault = defaultGamesList.find(g => g._id === gameId) || defaultGamesList[0];
+        let questionsList = foundDefault.questions;
         const activeState = {
-            gameId: game._id.toString(),
-            title: game.title,
-            type: game.type,
+            gameId: foundDefault._id,
+            title: foundDefault.title,
+            type: foundDefault.type,
             status: 'OPEN',
-            timeLimit: game.timeLimit || 30,
-            prize: game.prize || 50,
+            timeLimit: foundDefault.timeLimit,
+            prize: foundDefault.prize,
             questions: questionsList,
             currentQuestionIndex: 0,
-            totalQuestions: questionsList.length || 1,
+            totalQuestions: questionsList.length,
             joinedStudentIds: new Set(),
             submissions: new Map()
         };
-        game.status = 'OPEN';
-        game.currentQuestionIndex = 0;
-        game.totalQuestions = questionsList.length || 1;
-        try {
-            await game.save();
-        }
-        catch (err) { }
-        try {
-            if (mongoose_1.default.Types.ObjectId.isValid(eventId)) {
-                await Event_js_1.EventModel.findByIdAndUpdate(eventId, { currentGameId: game._id });
-            }
-            else {
-                await Event_js_1.EventModel.findOneAndUpdate({ code: eventId }, { currentGameId: game._id });
-            }
-        }
-        catch (err) { }
+        // 1. Instant Cache Update (< 1ms)
         cacheService_js_1.cacheService.setActiveGame(activeState);
-        const currentQ = questionsList[0];
+        // 2. Instant Socket Broadcast (< 1ms)
         if (this.io) {
+            const currentQ = questionsList[0];
             const openPayload = {
                 gameId: activeState.gameId,
                 title: activeState.title,
@@ -213,7 +110,30 @@ class GameEngine {
                 }
             });
         }
-        pino_js_1.logger.info(`Game ${game.title} is now OPEN (${questionsList.length} questions).`);
+        // 3. Async Background DB sync without delaying response
+        (async () => {
+            try {
+                if (mongoose_1.default.connection.readyState === 1) {
+                    let dbQuestions = await Question_js_1.Question.find({ gameId }).sort({ order: 1 });
+                    if (dbQuestions && dbQuestions.length > 0) {
+                        activeState.questions = dbQuestions.map(q => ({
+                            id: q._id.toString(),
+                            questionText: q.questionText,
+                            mediaContent: q.mediaContent,
+                            options: q.options,
+                            correctOptionIndex: q.correctOptionIndex,
+                            order: q.order
+                        }));
+                        activeState.totalQuestions = activeState.questions.length;
+                    }
+                    await Game_js_1.Game.findOneAndUpdate({ _id: gameId }, { status: 'OPEN', currentQuestionIndex: 0 }, { upsert: true });
+                }
+            }
+            catch (dbErr) {
+                pino_js_1.logger.error({ err: dbErr }, 'Background DB sync warning in openGame');
+            }
+        })();
+        pino_js_1.logger.info(`Game ${activeState.title} is now OPEN (${activeState.totalQuestions} questions).`);
         return activeState;
     }
     async joinGame(gameId, studentId, eventId) {

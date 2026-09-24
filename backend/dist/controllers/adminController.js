@@ -10,7 +10,6 @@ const Student_js_1 = require("../models/Student.js");
 const Winner_js_1 = require("../models/Winner.js");
 const Participant_js_1 = require("../models/Participant.js");
 const Submission_js_1 = require("../models/Submission.js");
-const Event_js_1 = require("../models/Event.js");
 const gameEngine_js_1 = require("../services/gameEngine.js");
 const cacheService_js_1 = require("../services/cacheService.js");
 const tokenService_js_1 = require("../services/tokenService.js");
@@ -161,12 +160,7 @@ const getGameLibrary = async (req, res) => {
 exports.getGameLibrary = getGameLibrary;
 const openGameControl = async (req, res) => {
     const id = req.params.id;
-    let event = null;
-    try {
-        event = await Event_js_1.EventModel.findOne({});
-    }
-    catch (err) { }
-    const eventId = event ? event._id.toString() : 'FRESHER2026';
+    const eventId = 'FRESHER2026';
     try {
         const active = await gameEngine_js_1.gameEngine.openGame(id, eventId);
         return res.json({ success: true, data: active });
@@ -178,12 +172,7 @@ const openGameControl = async (req, res) => {
 exports.openGameControl = openGameControl;
 const startGameControl = async (req, res) => {
     const id = req.params.id;
-    let event = null;
-    try {
-        event = await Event_js_1.EventModel.findOne({});
-    }
-    catch (err) { }
-    const eventId = event ? event._id.toString() : 'FRESHER2026';
+    const eventId = 'FRESHER2026';
     try {
         const active = await gameEngine_js_1.gameEngine.startGame(id, eventId);
         return res.json({ success: true, data: active });
@@ -195,12 +184,7 @@ const startGameControl = async (req, res) => {
 exports.startGameControl = startGameControl;
 const nextQuestionControl = async (req, res) => {
     const id = req.params.id;
-    let event = null;
-    try {
-        event = await Event_js_1.EventModel.findOne({});
-    }
-    catch (err) { }
-    const eventId = event ? event._id.toString() : 'FRESHER2026';
+    const eventId = 'FRESHER2026';
     try {
         const active = await gameEngine_js_1.gameEngine.nextQuestion(id, eventId);
         return res.json({ success: true, data: active });
@@ -212,12 +196,7 @@ const nextQuestionControl = async (req, res) => {
 exports.nextQuestionControl = nextQuestionControl;
 const closeGameControl = async (req, res) => {
     const id = req.params.id;
-    let event = null;
-    try {
-        event = await Event_js_1.EventModel.findOne({});
-    }
-    catch (err) { }
-    const eventId = event ? event._id.toString() : 'FRESHER2026';
+    const eventId = 'FRESHER2026';
     try {
         const result = await gameEngine_js_1.gameEngine.closeGame(id, eventId);
         return res.json({ success: true, data: result });
@@ -257,12 +236,7 @@ const getGameResults = async (req, res) => {
 exports.getGameResults = getGameResults;
 const approveWinnerControl = async (req, res) => {
     const winnerId = req.params.winnerId;
-    let event = null;
-    try {
-        event = await Event_js_1.EventModel.findOne({});
-    }
-    catch (err) { }
-    const eventId = event ? event._id.toString() : 'FRESHER2026';
+    const eventId = 'FRESHER2026';
     try {
         const winner = await gameEngine_js_1.gameEngine.approveWinner(winnerId, 'Management Admin', eventId);
         return res.json({ success: true, data: winner });
@@ -274,12 +248,7 @@ const approveWinnerControl = async (req, res) => {
 exports.approveWinnerControl = approveWinnerControl;
 const publishWinnerControl = async (req, res) => {
     const winnerId = req.params.winnerId;
-    let event = null;
-    try {
-        event = await Event_js_1.EventModel.findOne({});
-    }
-    catch (err) { }
-    const eventId = event ? event._id.toString() : 'FRESHER2026';
+    const eventId = 'FRESHER2026';
     try {
         const winner = await gameEngine_js_1.gameEngine.publishWinner(winnerId, eventId);
         return res.json({ success: true, data: winner });
@@ -291,12 +260,7 @@ const publishWinnerControl = async (req, res) => {
 exports.publishWinnerControl = publishWinnerControl;
 const drawNumber = async (req, res) => {
     const { type } = req.body;
-    let event = null;
-    try {
-        event = await Event_js_1.EventModel.findOne({});
-    }
-    catch (err) { }
-    const eventId = event ? event._id.toString() : 'FRESHER2026';
+    const eventId = 'FRESHER2026';
     try {
         const drawn = await gameEngine_js_1.gameEngine.drawRandomNumber(type, eventId);
         return res.json({ success: true, data: drawn });
