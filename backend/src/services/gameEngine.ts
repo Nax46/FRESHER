@@ -191,7 +191,7 @@ export class GameEngine {
     const currentQ = questionsList[0];
 
     if (this.io) {
-      this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('GAME_OPENED', {
+      const openPayload = {
         gameId: activeState.gameId,
         title: activeState.title,
         type: activeState.type,
@@ -203,9 +203,12 @@ export class GameEngine {
           questionText: currentQ.questionText,
           mediaContent: currentQ.mediaContent
         } : null
-      });
+      };
 
-      this.io.to(`auditorium:${eventId}`).to('auditorium:FRESHER2026').emit('AUDITORIUM_UPDATED', {
+      this.io.emit('GAME_OPENED', openPayload);
+      this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('GAME_OPENED', openPayload);
+
+      this.io.emit('AUDITORIUM_UPDATED', {
         state: 'GAME_ANNOUNCEMENT',
         payload: {
           gameTitle: activeState.title,
@@ -240,6 +243,11 @@ export class GameEngine {
     const joinedCount = active.joinedStudentIds.size;
 
     if (this.io) {
+      this.io.emit('PARTICIPANT_JOINED', {
+        gameId,
+        studentId,
+        joinedCount
+      });
       this.io.to(`management:${eventId}`).to('management:FRESHER2026').emit('PARTICIPANT_JOINED', {
         gameId,
         studentId,
@@ -278,16 +286,19 @@ export class GameEngine {
         order: currentQ.order
       } : null;
 
-      this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('GAME_STARTED', {
+      const startPayload = {
         gameId: active.gameId,
         timeLimit: active.timeLimit,
         currentQuestionIndex: active.currentQuestionIndex,
         totalQuestions: active.totalQuestions,
         question: publicQuestion,
         startTime: active.startTime
-      });
+      };
 
-      this.io.to(`auditorium:${eventId}`).to('auditorium:FRESHER2026').emit('AUDITORIUM_UPDATED', {
+      this.io.emit('GAME_STARTED', startPayload);
+      this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('GAME_STARTED', startPayload);
+
+      this.io.emit('AUDITORIUM_UPDATED', {
         state: 'GAME_LIVE',
         payload: {
           gameTitle: active.title,
@@ -346,16 +357,19 @@ export class GameEngine {
         order: currentQ.order
       } : null;
 
-      this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('QUESTION_CHANGED', {
+      const nextPayload = {
         gameId: active.gameId,
         timeLimit: active.timeLimit,
         currentQuestionIndex: active.currentQuestionIndex,
         totalQuestions: active.totalQuestions,
         question: publicQuestion,
         startTime: active.startTime
-      });
+      };
 
-      this.io.to(`auditorium:${eventId}`).to('auditorium:FRESHER2026').emit('AUDITORIUM_UPDATED', {
+      this.io.emit('QUESTION_CHANGED', nextPayload);
+      this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('QUESTION_CHANGED', nextPayload);
+
+      this.io.emit('AUDITORIUM_UPDATED', {
         state: 'GAME_LIVE',
         payload: {
           gameTitle: active.title,
@@ -424,10 +438,12 @@ export class GameEngine {
     }
 
     if (this.io) {
-      this.io.to(`management:${active.gameId}`).to('management:FRESHER2026').emit('SUBMISSION_RECEIVED', {
+      const subPayload = {
         totalSubmissions: active.submissions.size,
         correctCount: Array.from(active.submissions.values()).filter(s => s.isCorrect).length
-      });
+      };
+      this.io.emit('SUBMISSION_RECEIVED', subPayload);
+      this.io.to(`management:${active.gameId}`).to('management:FRESHER2026').emit('SUBMISSION_RECEIVED', subPayload);
     }
 
     return { isCorrect, responseTimeMs, isWinnerCandidate };
@@ -484,15 +500,21 @@ export class GameEngine {
     }
 
     if (this.io) {
+      this.io.emit('GAME_CLOSED', { gameId });
       this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('GAME_CLOSED', { gameId });
 
+      this.io.emit('WINNER_CANDIDATE', {
+        gameId,
+        winnerCandidate: winnerCandidateData,
+        totalSubmissions: active.submissions.size
+      });
       this.io.to(`management:${eventId}`).to('management:FRESHER2026').emit('WINNER_CANDIDATE', {
         gameId,
         winnerCandidate: winnerCandidateData,
         totalSubmissions: active.submissions.size
       });
 
-      this.io.to(`auditorium:${eventId}`).to('auditorium:FRESHER2026').emit('AUDITORIUM_UPDATED', {
+      this.io.emit('AUDITORIUM_UPDATED', {
         state: 'GAME_CLOSED',
         payload: {
           gameTitle: active.title
