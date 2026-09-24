@@ -2,14 +2,10 @@
   "name": "fresher-platform-monorepo",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "scripts": {
-    "build": "npm run build --workspace=frontend",
-    "build:backend": "npm run build --workspace=backend",
-    "build:frontend": "npm run build --workspace=frontend",
-    "start": "npm run start --workspace=backend"
+    "build": "npm run --prefix frontend build",
+    "build:backend": "npm run --prefix backend build",
+    "build:frontend": "npm run --prefix frontend build",
+    "start": "npm start --prefix backend"
   }
 }
