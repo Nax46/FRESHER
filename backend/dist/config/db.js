@@ -10,6 +10,7 @@ const pino_js_1 = require("./pino.js");
 const connectDB = async () => {
     try {
         mongoose_1.default.set('strictQuery', true);
+        mongoose_1.default.set('bufferCommands', false); // Fail fast without buffering when DB is offline
         await mongoose_1.default.connect(env_js_1.ENV.MONGO_URI, {
             maxPoolSize: 50,
             minPoolSize: 5,
@@ -20,7 +21,7 @@ const connectDB = async () => {
         return true;
     }
     catch (error) {
-        pino_js_1.logger.error({ err: error }, 'MongoDB connection failure. Operating in-memory cache mode.');
+        pino_js_1.logger.error({ err: error }, 'MongoDB connection failure. Operating with fallback resilience.');
         return false;
     }
 };

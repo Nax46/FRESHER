@@ -10,6 +10,7 @@ const socket_io_1 = require("socket.io");
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const env_js_1 = require("./config/env.js");
 const db_js_1 = require("./config/db.js");
 const pino_js_1 = require("./config/pino.js");
@@ -22,6 +23,13 @@ const app = (0, express_1.default)();
 exports.app = app;
 const httpServer = (0, http_1.createServer)(app);
 exports.httpServer = httpServer;
+// Process Level Error Catching — Prevents Server Crashes
+process.on('unhandledRejection', (reason, promise) => {
+    pino_js_1.logger.error({ reason }, 'Unhandled Rejection caught — keeping server online.');
+});
+process.on('uncaughtException', (error) => {
+    pino_js_1.logger.error({ error }, 'Uncaught Exception caught — keeping server online.');
+});
 // Initialize Socket.IO with CORS configuration
 const io = new socket_io_1.Server(httpServer, {
     cors: {
@@ -54,10 +62,12 @@ app.use(errorHandler_js_1.errorHandler);
 // Background Job: Purge students inactive for > 10 minutes (600,000 ms)
 setInterval(async () => {
     try {
-        const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
-        const result = await Student_js_1.Student.deleteMany({ lastActiveAt: { $lt: tenMinsAgo } });
-        if (result.deletedCount > 0) {
-            pino_js_1.logger.info(`🧹 Inactivity Purge: Deleted ${result.deletedCount} students inactive for > 10 mins.`);
+        if (mongoose_1.default.connection.readyState === 1) {
+            const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
+            const result = await Student_js_1.Student.deleteMany({ lastActiveAt: { $lt: tenMinsAgo } });
+            if (result.deletedCount > 0) {
+                pino_js_1.logger.info(`🧹 Inactivity Purge: Deleted ${result.deletedCount} students inactive for > 10 mins.`);
+            }
         }
     }
     catch (err) {

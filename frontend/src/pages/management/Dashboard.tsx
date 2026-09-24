@@ -87,6 +87,9 @@ export const Dashboard: React.FC = () => {
       if (res.data.success) {
         setMetrics(res.data.data.metrics);
         setCurrentGame(res.data.data.currentGame);
+        if (res.data.data.winnerCandidate) {
+          setWinnerCandidate(res.data.data.winnerCandidate);
+        }
       }
     } catch (err) {
       // Handle expired token
@@ -106,11 +109,29 @@ export const Dashboard: React.FC = () => {
 
   const handleOpenGame = async (gameId: string) => {
     try {
-      await axios.post(`/api/v1/admin/games/${gameId}/open`, {}, {
+      const res = await axios.post(`/api/v1/admin/games/${gameId}/open`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.data.success && res.data.data) {
+        setCurrentGame({
+          gameId: res.data.data.gameId,
+          title: res.data.data.title,
+          type: res.data.data.type,
+          status: 'OPEN',
+          joinedCount: 0,
+          totalSubmissions: 0,
+          currentQuestionIndex: 0,
+          totalQuestions: res.data.data.totalQuestions || 1
+        });
+      }
       fetchDashboard();
       fetchLibrary();
+      const element = document.getElementById('current-game-control');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to open game');
     }
@@ -282,7 +303,7 @@ export const Dashboard: React.FC = () => {
         {/* Left 2 Columns: Live Game & Winner Review */}
         <div className="lg:col-span-2 space-y-6">
           {/* CURRENT ACTIVE GAME CONTROL BOX */}
-          <div className="glass-card rounded-2xl p-6 border border-purple-500/30 relative overflow-hidden">
+          <div id="current-game-control" className="glass-card rounded-2xl p-6 border border-purple-500/30 relative overflow-hidden">
             <div className="flex items-center justify-between mb-4 border-b border-purple-500/20 pb-3">
               <div className="flex items-center space-x-2">
                 <Gamepad2 className="w-5 h-5 text-purple-400" />

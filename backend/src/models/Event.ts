@@ -17,7 +17,7 @@ const EventSchema: Schema = new Schema(
     name: { type: String, required: true, default: '🎉 FRESHER 2026' },
     code: { type: String, required: true, unique: true, default: 'FRESHER2026' },
     status: { type: String, enum: ['DRAFT', 'LIVE', 'ENDED'], default: 'LIVE' },
-    currentGameId: { type: Schema.Types.ObjectId, ref: 'Game' },
+    currentGameId: { type: Schema.Types.Mixed },
     auditoriumState: {
       state: { type: String, default: 'WELCOME' },
       payload: { type: Schema.Types.Mixed, default: {} },

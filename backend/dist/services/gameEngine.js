@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.gameEngine = exports.GameEngine = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const cacheService_js_1 = require("./cacheService.js");
 const Game_js_1 = require("../models/Game.js");
 const Question_js_1 = require("../models/Question.js");
@@ -17,11 +21,126 @@ class GameEngine {
         this.io = io;
     }
     async openGame(gameId, eventId) {
-        const game = await Game_js_1.Game.findById(gameId);
-        if (!game)
-            throw new Error('Game not found');
-        const dbQuestions = await Question_js_1.Question.find({ gameId }).sort({ order: 1 });
-        const questionsList = dbQuestions.map(q => ({
+        let game = null;
+        try {
+            if (mongoose_1.default.Types.ObjectId.isValid(gameId)) {
+                game = await Game_js_1.Game.findById(gameId);
+            }
+            else {
+                game = await Game_js_1.Game.findOne({ _id: gameId });
+            }
+        }
+        catch (err) { }
+        if (!game) {
+            try {
+                game = await Game_js_1.Game.findOne({ title: { $regex: gameId.replace(/^game_/, '').replace(/_\d+$/, ''), $options: 'i' } });
+            }
+            catch (err) { }
+        }
+        if (!game) {
+            // Fallback default games mapping
+            const defaultGamesList = [
+                {
+                    _id: 'game_emoji_01',
+                    title: '😂 Guess the Emoji',
+                    type: 'SPEED_MCQ',
+                    timeLimit: 30,
+                    prize: 50,
+                    questions: [
+                        { id: 'q1', questionText: 'What movie does this represent?', mediaContent: '🦁 + 👑', options: ['Jungle Book', 'Lion King', 'Madagascar', 'Simba'], correctOptionIndex: 1, order: 1 },
+                        { id: 'q2', questionText: 'Which blockbuster movie is this?', mediaContent: '🕷️ + 👨', options: ['Batman', 'Iron Man', 'Spider-Man', 'Superman'], correctOptionIndex: 2, order: 2 },
+                        { id: 'q3', questionText: 'Guess the iconic movie title!', mediaContent: '🚢 + ❄️ + 🧊', options: ['Titanic', 'Avatar', 'Pirates of Caribbean', 'Life of Pi'], correctOptionIndex: 0, order: 3 }
+                    ]
+                },
+                {
+                    _id: 'game_lyrics_02',
+                    title: '🎵 Finish the Lyrics',
+                    type: 'SPEED_MCQ',
+                    timeLimit: 30,
+                    prize: 50,
+                    questions: [
+                        { id: 'q1', questionText: 'Complete the lyric: "Apna Time _____!"', mediaContent: '🎤 "Apna Time _____!"', options: ['Kab Aayega', 'Aayega', 'Aa Gaya', 'Hoga'], correctOptionIndex: 1, order: 1 },
+                        { id: 'q2', questionText: 'Complete the line: "Tum hi ho, ab tum hi ho..."', mediaContent: '🎵 "Tum hi ho..."', options: ['Meri Tum', 'Ab Tum Hi Ho', 'Bas Tum Hi', 'Har Pal Tum'], correctOptionIndex: 1, order: 2 }
+                    ]
+                },
+                {
+                    _id: 'game_quote_03',
+                    title: '👀 Who Said This?',
+                    type: 'SPEED_MCQ',
+                    timeLimit: 20,
+                    prize: 50,
+                    questions: [
+                        { id: 'q1', questionText: 'Who said: "Mogambo Khush Hua!"?', mediaContent: '💬 "Mogambo Khush Hua!"', options: ['Gabbar Singh', 'Crime Master Gogo', 'Mogambo', 'Shakal'], correctOptionIndex: 2, order: 1 }
+                    ]
+                },
+                {
+                    _id: 'game_dialogue_04',
+                    title: '🎬 Complete the Dialogue',
+                    type: 'SPOTLIGHT_CHALLENGE',
+                    timeLimit: 60,
+                    prize: 100,
+                    questions: [
+                        { id: 'q1', questionText: 'Complete this famous dialogue on stage!', mediaContent: '🎭 "Mogambo..."', options: ['Pass', 'Fail'], correctOptionIndex: 0, order: 1 }
+                    ]
+                },
+                {
+                    _id: 'game_memory_05',
+                    title: '🧠 Memory Challenge',
+                    type: 'SPOTLIGHT_CHALLENGE',
+                    timeLimit: 60,
+                    prize: 100,
+                    questions: [
+                        { id: 'q1', questionText: 'Recall the sequence shown on screen!', mediaContent: '🍎 🚗 🎸 🐱 ⚽', options: ['Correct 8+', 'Correct <8'], correctOptionIndex: 0, order: 1 }
+                    ]
+                },
+                {
+                    _id: 'game_faculty_06',
+                    title: '🎯 Faculty 1v1',
+                    type: 'LUCKY_NUMBER',
+                    timeLimit: 120,
+                    prize: 200,
+                    questions: [
+                        { id: 'q1', questionText: 'Student vs Faculty Showdown!', mediaContent: '🏆 Stage Challenge', options: ['Student Wins', 'Faculty Wins'], correctOptionIndex: 0, order: 1 }
+                    ]
+                },
+                {
+                    _id: 'game_audience_07',
+                    title: '🙈 Never Have I Ever',
+                    type: 'AUDIENCE',
+                    timeLimit: 60,
+                    prize: 0,
+                    questions: [
+                        { id: 'q1', questionText: 'Never Have I Ever slept in a lecture!', mediaContent: '🙈 Audience Poll', options: ['I Have', 'I Never'], correctOptionIndex: 0, order: 1 }
+                    ]
+                },
+                {
+                    _id: 'game_physical_08',
+                    title: '⚡ 30-Second Challenge',
+                    type: 'PHYSICAL',
+                    timeLimit: 30,
+                    prize: 50,
+                    questions: [
+                        { id: 'q1', questionText: 'Rapid-fire 30-second physical challenge!', mediaContent: '⚡ 30 Seconds', options: ['Completed', 'Failed'], correctOptionIndex: 0, order: 1 }
+                    ]
+                }
+            ];
+            const found = defaultGamesList.find(g => g._id === gameId) || defaultGamesList[0];
+            game = {
+                _id: found._id,
+                title: found.title,
+                type: found.type,
+                timeLimit: found.timeLimit,
+                prize: found.prize,
+                status: 'OPEN',
+                save: async () => { }
+            };
+        }
+        let dbQuestions = [];
+        try {
+            dbQuestions = await Question_js_1.Question.find({ gameId }).sort({ order: 1 });
+        }
+        catch (err) { }
+        let questionsList = dbQuestions.map(q => ({
             id: q._id.toString(),
             questionText: q.questionText,
             mediaContent: q.mediaContent,
@@ -29,6 +148,14 @@ class GameEngine {
             correctOptionIndex: q.correctOptionIndex,
             order: q.order
         }));
+        if (questionsList.length === 0) {
+            // Default questions fallback
+            questionsList = [
+                { id: 'q1', questionText: 'What movie does this represent?', mediaContent: '🦁 + 👑', options: ['Jungle Book', 'Lion King', 'Madagascar', 'Simba'], correctOptionIndex: 1, order: 1 },
+                { id: 'q2', questionText: 'Which blockbuster movie is this?', mediaContent: '🕷️ + 👨', options: ['Batman', 'Iron Man', 'Spider-Man', 'Superman'], correctOptionIndex: 2, order: 2 },
+                { id: 'q3', questionText: 'Guess the iconic movie title!', mediaContent: '🚢 + ❄️ + 🧊', options: ['Titanic', 'Avatar', 'Pirates of Caribbean', 'Life of Pi'], correctOptionIndex: 0, order: 3 }
+            ];
+        }
         const activeState = {
             gameId: game._id.toString(),
             title: game.title,
@@ -45,8 +172,19 @@ class GameEngine {
         game.status = 'OPEN';
         game.currentQuestionIndex = 0;
         game.totalQuestions = questionsList.length || 1;
-        await game.save();
-        await Event_js_1.EventModel.findByIdAndUpdate(eventId, { currentGameId: game._id });
+        try {
+            await game.save();
+        }
+        catch (err) { }
+        try {
+            if (mongoose_1.default.Types.ObjectId.isValid(eventId)) {
+                await Event_js_1.EventModel.findByIdAndUpdate(eventId, { currentGameId: game._id });
+            }
+            else {
+                await Event_js_1.EventModel.findOneAndUpdate({ code: eventId }, { currentGameId: game._id });
+            }
+        }
+        catch (err) { }
         cacheService_js_1.cacheService.setActiveGame(activeState);
         const currentQ = questionsList[0];
         if (this.io) {
@@ -105,7 +243,12 @@ class GameEngine {
         active.startTime = Date.now();
         active.winnerCandidateId = undefined;
         active.winnerCandidateResponseTime = undefined;
-        await Game_js_1.Game.findByIdAndUpdate(gameId, { status: 'LIVE', currentQuestionIndex: active.currentQuestionIndex });
+        try {
+            if (mongoose_1.default.Types.ObjectId.isValid(gameId)) {
+                await Game_js_1.Game.findByIdAndUpdate(gameId, { status: 'LIVE', currentQuestionIndex: active.currentQuestionIndex });
+            }
+        }
+        catch (err) { }
         const currentQ = active.questions[active.currentQuestionIndex];
         if (this.io) {
             const publicQuestion = currentQ ? {
@@ -157,10 +300,15 @@ class GameEngine {
         active.winnerCandidateId = undefined;
         active.winnerCandidateResponseTime = undefined;
         active.submissions.clear(); // Reset submissions for the new question
-        await Game_js_1.Game.findByIdAndUpdate(gameId, {
-            status: 'LIVE',
-            currentQuestionIndex: active.currentQuestionIndex
-        });
+        try {
+            if (mongoose_1.default.Types.ObjectId.isValid(gameId)) {
+                await Game_js_1.Game.findByIdAndUpdate(gameId, {
+                    status: 'LIVE',
+                    currentQuestionIndex: active.currentQuestionIndex
+                });
+            }
+        }
+        catch (err) { }
         const currentQ = active.questions[active.currentQuestionIndex];
         if (this.io) {
             const publicQuestion = currentQ ? {
@@ -261,7 +409,12 @@ class GameEngine {
             return { winnerCandidate: null, totalSubmissions: 0 };
         }
         active.status = 'CLOSED';
-        await Game_js_1.Game.findByIdAndUpdate(gameId, { status: 'CLOSED' });
+        try {
+            if (mongoose_1.default.Types.ObjectId.isValid(gameId)) {
+                await Game_js_1.Game.findByIdAndUpdate(gameId, { status: 'CLOSED' });
+            }
+        }
+        catch (err) { }
         let winnerCandidateData = null;
         if (active.winnerCandidateId) {
             const student = await Student_js_1.Student.findById(active.winnerCandidateId);

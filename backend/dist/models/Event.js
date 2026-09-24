@@ -39,7 +39,7 @@ const EventSchema = new mongoose_1.Schema({
     name: { type: String, required: true, default: '🎉 FRESHER 2026' },
     code: { type: String, required: true, unique: true, default: 'FRESHER2026' },
     status: { type: String, enum: ['DRAFT', 'LIVE', 'ENDED'], default: 'LIVE' },
-    currentGameId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Game' },
+    currentGameId: { type: mongoose_1.Schema.Types.Mixed },
     auditoriumState: {
         state: { type: String, default: 'WELCOME' },
         payload: { type: mongoose_1.Schema.Types.Mixed, default: {} },
