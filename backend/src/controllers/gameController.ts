@@ -12,8 +12,13 @@ export const joinGame = async (req: Request, res: Response) => {
   }
 
   try {
-    const defaultEvent = await EventModel.findOne({});
-    const eventId = defaultEvent ? defaultEvent._id.toString() : 'default';
+    let eventId = 'FRESHER2026';
+    try {
+      const defaultEvent = await EventModel.findOne({});
+      if (defaultEvent) eventId = defaultEvent._id.toString();
+    } catch (err) {
+      // Fallback cleanly to default event if DB is connecting
+    }
     const result = await gameEngine.joinGame(gameId, studentId, eventId);
     return res.json({ success: true, data: result });
   } catch (error: any) {

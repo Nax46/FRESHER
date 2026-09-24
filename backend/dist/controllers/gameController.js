@@ -10,8 +10,15 @@ const joinGame = async (req, res) => {
         return res.status(400).json({ success: false, error: 'Student ID required' });
     }
     try {
-        const defaultEvent = await Event_js_1.EventModel.findOne({});
-        const eventId = defaultEvent ? defaultEvent._id.toString() : 'default';
+        let eventId = 'FRESHER2026';
+        try {
+            const defaultEvent = await Event_js_1.EventModel.findOne({});
+            if (defaultEvent)
+                eventId = defaultEvent._id.toString();
+        }
+        catch (err) {
+            // Fallback cleanly to default event if DB is connecting
+        }
         const result = await gameEngine_js_1.gameEngine.joinGame(gameId, studentId, eventId);
         return res.json({ success: true, data: result });
     }

@@ -5,7 +5,8 @@ import { logger } from './pino.js';
 export const connectDB = async (): Promise<boolean> => {
   try {
     mongoose.set('strictQuery', true);
-    mongoose.set('bufferCommands', false); // Fail fast without buffering when DB is offline
+    // Allow buffering during connection setup so queries don't fail immediately
+    mongoose.set('bufferCommands', true);
 
     await mongoose.connect(ENV.MONGO_URI, {
       maxPoolSize: 50,

@@ -216,14 +216,14 @@ class GameEngine {
     }
     async joinGame(gameId, studentId, eventId) {
         const active = cacheService_js_1.cacheService.getActiveGame();
-        if (!active || active.gameId !== gameId) {
-            throw new Error('Game is not currently open for joining');
+        if (!active) {
+            throw new Error('No game is currently open for joining');
         }
         if (active.status !== 'OPEN' && active.status !== 'LIVE') {
-            throw new Error('Game joining is closed');
+            throw new Error('Game joining is currently closed');
         }
         active.joinedStudentIds.add(studentId);
-        Participant_js_1.Participant.updateOne({ gameId, studentId }, { $setOnInsert: { joinedAt: new Date(), status: 'JOINED' } }, { upsert: true }).catch(err => pino_js_1.logger.error({ err }, 'Failed to persist participant'));
+        Participant_js_1.Participant.updateOne({ gameId: active.gameId, studentId }, { $setOnInsert: { joinedAt: new Date(), status: 'JOINED' } }, { upsert: true }).catch(err => pino_js_1.logger.error({ err }, 'Failed to persist participant'));
         const joinedCount = active.joinedStudentIds.size;
         if (this.io) {
             this.io.to(`management:${eventId}`).to('management:FRESHER2026').emit('PARTICIPANT_JOINED', {

@@ -12,9 +12,9 @@ export interface ISubmission extends Document {
 
 const SubmissionSchema: Schema = new Schema(
   {
-    gameId: { type: Schema.Types.ObjectId, ref: 'Game', required: true, index: true },
-    questionId: { type: Schema.Types.ObjectId, ref: 'Question', required: true, index: true },
-    studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+    gameId: { type: Schema.Types.Mixed, required: true, index: true },
+    questionId: { type: Schema.Types.Mixed, required: true, index: true },
+    studentId: { type: Schema.Types.Mixed, required: true, index: true },
     selectedOptionIndex: { type: Number, required: true },
     isCorrect: { type: Boolean, required: true },
     responseTimeMs: { type: Number, required: true },

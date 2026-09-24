@@ -222,17 +222,17 @@ export class GameEngine {
 
   public async joinGame(gameId: string, studentId: string, eventId: string): Promise<{ joinedCount: number }> {
     const active = cacheService.getActiveGame();
-    if (!active || active.gameId !== gameId) {
-      throw new Error('Game is not currently open for joining');
+    if (!active) {
+      throw new Error('No game is currently open for joining');
     }
     if (active.status !== 'OPEN' && active.status !== 'LIVE') {
-      throw new Error('Game joining is closed');
+      throw new Error('Game joining is currently closed');
     }
 
     active.joinedStudentIds.add(studentId);
 
     Participant.updateOne(
-      { gameId, studentId },
+      { gameId: active.gameId, studentId },
       { $setOnInsert: { joinedAt: new Date(), status: 'JOINED' } },
       { upsert: true }
     ).catch(err => logger.error({ err }, 'Failed to persist participant'));

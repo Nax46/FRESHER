@@ -36,8 +36,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Participant = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const ParticipantSchema = new mongoose_1.Schema({
-    gameId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Game', required: true, index: true },
-    studentId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+    gameId: { type: mongoose_1.Schema.Types.Mixed, required: true, index: true },
+    studentId: { type: mongoose_1.Schema.Types.Mixed, required: true, index: true },
     joinedAt: { type: Date, default: Date.now },
     status: { type: String, enum: ['JOINED', 'SUBMITTED', 'DISQUALIFIED'], default: 'JOINED' }
 }, { timestamps: true });

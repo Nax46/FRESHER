@@ -10,7 +10,8 @@ const pino_js_1 = require("./pino.js");
 const connectDB = async () => {
     try {
         mongoose_1.default.set('strictQuery', true);
-        mongoose_1.default.set('bufferCommands', false); // Fail fast without buffering when DB is offline
+        // Allow buffering during connection setup so queries don't fail immediately
+        mongoose_1.default.set('bufferCommands', true);
         await mongoose_1.default.connect(env_js_1.ENV.MONGO_URI, {
             maxPoolSize: 50,
             minPoolSize: 5,

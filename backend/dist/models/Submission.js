@@ -36,9 +36,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Submission = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const SubmissionSchema = new mongoose_1.Schema({
-    gameId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Game', required: true, index: true },
-    questionId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Question', required: true, index: true },
-    studentId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+    gameId: { type: mongoose_1.Schema.Types.Mixed, required: true, index: true },
+    questionId: { type: mongoose_1.Schema.Types.Mixed, required: true, index: true },
+    studentId: { type: mongoose_1.Schema.Types.Mixed, required: true, index: true },
     selectedOptionIndex: { type: Number, required: true },
     isCorrect: { type: Boolean, required: true },
     responseTimeMs: { type: Number, required: true },

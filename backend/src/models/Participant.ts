@@ -9,8 +9,8 @@ export interface IParticipant extends Document {
 
 const ParticipantSchema: Schema = new Schema(
   {
-    gameId: { type: Schema.Types.ObjectId, ref: 'Game', required: true, index: true },
-    studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+    gameId: { type: Schema.Types.Mixed, required: true, index: true },
+    studentId: { type: Schema.Types.Mixed, required: true, index: true },
     joinedAt: { type: Date, default: Date.now },
     status: { type: String, enum: ['JOINED', 'SUBMITTED', 'DISQUALIFIED'], default: 'JOINED' }
   },
