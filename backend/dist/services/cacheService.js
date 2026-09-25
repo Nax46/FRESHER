@@ -36,6 +36,17 @@ class InMemoryCache {
     getOnlineStudentCount() {
         return this.getStudentCount();
     }
+    getAllStudents() {
+        const list = [];
+        const seen = new Set();
+        for (const session of this.studentSessions.values()) {
+            if (session.enrollmentNo && !seen.has(session.enrollmentNo.toUpperCase())) {
+                seen.add(session.enrollmentNo.toUpperCase());
+                list.push(session);
+            }
+        }
+        return list;
+    }
     clearAllStudentSessions() {
         this.studentSessions.clear();
     }

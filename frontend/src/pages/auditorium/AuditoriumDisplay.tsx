@@ -1,12 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuditoriumStore } from '../../store/useAuditoriumStore';
 import { socket } from '../../sockets/socketClient';
-import { Trophy, Sparkles, Star, Gamepad2, Hourglass, CheckCircle, Ticket } from 'lucide-react';
+import { Trophy, Sparkles, Star, Gamepad2, Hourglass, CheckCircle, Ticket, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
 
 export const AuditoriumDisplay: React.FC = () => {
   const { state, payload, setAuditoriumState } = useAuditoriumStore();
+  const [shuffleState, setShuffleState] = useState<{
+    isShuffling: boolean;
+    displayNumber: number | string;
+    displayName: string;
+    displayToken: number | string;
+  }>({ isShuffling: false, displayNumber: '', displayName: '', displayToken: '' });
 
   useEffect(() => {
     // Join Auditorium socket room
@@ -16,6 +22,54 @@ export const AuditoriumDisplay: React.FC = () => {
 
     socket.on('AUDITORIUM_UPDATED', (data) => {
       setAuditoriumState(data.state, data.payload);
+
+      if (data.state === 'SPOTLIGHT_DRAW' || data.state === 'LUCKY_DRAW') {
+        const candidates = data.payload?.candidates || [];
+        const finalNum = data.payload?.number;
+        const finalName = data.payload?.studentName;
+        const finalToken = data.payload?.tokenNo;
+
+        if (candidates.length > 0) {
+          setShuffleState({
+            isShuffling: true,
+            displayNumber: candidates[0].number,
+            displayName: candidates[0].name,
+            displayToken: candidates[0].tokenNo
+          });
+
+          let count = 0;
+          const interval = setInterval(() => {
+            const randIndex = Math.floor(Math.random() * candidates.length);
+            const item = candidates[randIndex];
+            setShuffleState({
+              isShuffling: true,
+              displayNumber: item.number,
+              displayName: item.name,
+              displayToken: item.tokenNo
+            });
+            count++;
+            if (count >= 35) {
+              clearInterval(interval);
+              setShuffleState({
+                isShuffling: false,
+                displayNumber: finalNum,
+                displayName: finalName,
+                displayToken: finalToken
+              });
+              confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
+            }
+          }, 60);
+        } else {
+          setShuffleState({
+            isShuffling: false,
+            displayNumber: finalNum,
+            displayName: finalName,
+            displayToken: finalToken
+          });
+          confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
+        }
+      }
+
       if (data.state === 'WINNER_PUBLISHED') {
         // Trigger celebratory confetti on auditorium screen
         confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
@@ -165,13 +219,19 @@ export const AuditoriumDisplay: React.FC = () => {
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 mb-2">
               <Star className="w-12 h-12" />
             </div>
-            <span className="text-lg font-black uppercase tracking-widest text-cyan-400">⭐ SPOTLIGHT NUMBER DRAWN</span>
-            <div className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 py-2">
-              #{payload?.number}
+            <span className="text-lg font-black uppercase tracking-widest text-cyan-400">
+              {shuffleState.isShuffling ? '🎲 SHUFFLING ACTIVE ENTERED USERS...' : '⭐ SPOTLIGHT NUMBER DRAWN'}
+            </span>
+            <div className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 py-2 font-mono glow-gold">
+              #{shuffleState.isShuffling ? shuffleState.displayNumber : payload?.number}
             </div>
-            <div className="glass-card rounded-2xl p-6 border border-cyan-500/30 max-w-xl mx-auto">
-              <h2 className="text-3xl font-black text-white">{payload?.studentName}</h2>
-              <p className="text-xl font-bold text-cyan-300 mt-2">PLEASE COME TO THE STAGE!</p>
+            <div className="glass-card rounded-2xl p-6 border border-cyan-500/30 max-w-xl mx-auto shadow-2xl space-y-2">
+              <h2 className="text-4xl font-black text-white">
+                {shuffleState.isShuffling ? shuffleState.displayName : payload?.studentName}
+              </h2>
+              <p className="text-xl font-bold text-cyan-300">
+                {shuffleState.isShuffling ? 'SHUFFLING REAL-TIME REGISTERED PARTICIPANTS...' : 'PLEASE COME TO THE STAGE! 🎉'}
+              </p>
             </div>
           </div>
         )}
@@ -182,13 +242,19 @@ export const AuditoriumDisplay: React.FC = () => {
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-amber-500/20 text-amber-400 border border-amber-500/40 mb-2">
               <Sparkles className="w-12 h-12" />
             </div>
-            <span className="text-lg font-black uppercase tracking-widest text-amber-400">🍀 LUCKY NUMBER FACULTY 1v1</span>
-            <div className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500 py-2">
-              #{payload?.number}
+            <span className="text-lg font-black uppercase tracking-widest text-amber-400">
+              {shuffleState.isShuffling ? '🎲 SHUFFLING ACTIVE ENTERED USERS...' : '🍀 LUCKY NUMBER FACULTY 1v1'}
+            </span>
+            <div className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500 py-2 font-mono glow-gold">
+              #{shuffleState.isShuffling ? shuffleState.displayNumber : payload?.number}
             </div>
-            <div className="glass-card rounded-2xl p-6 border border-amber-500/30 max-w-xl mx-auto">
-              <h2 className="text-3xl font-black text-white">{payload?.studentName}</h2>
-              <p className="text-xl font-bold text-amber-300 mt-2">STUDENT VS FACULTY SHOWDOWN — COME TO STAGE!</p>
+            <div className="glass-card rounded-2xl p-6 border border-amber-500/30 max-w-xl mx-auto shadow-2xl space-y-2">
+              <h2 className="text-4xl font-black text-white">
+                {shuffleState.isShuffling ? shuffleState.displayName : payload?.studentName}
+              </h2>
+              <p className="text-xl font-bold text-amber-300">
+                {shuffleState.isShuffling ? 'SHUFFLING REAL-TIME REGISTERED PARTICIPANTS...' : 'STUDENT VS FACULTY SHOWDOWN — COME TO STAGE! 🎉'}
+              </p>
             </div>
           </div>
         )}

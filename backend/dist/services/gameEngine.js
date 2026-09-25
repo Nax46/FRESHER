@@ -476,20 +476,60 @@ class GameEngine {
         pino_js_1.logger.info(`Published winner ${student.name} for game ${game.title} to Auditorium!`);
         return winner;
     }
-    // DRAW RANDOM NUMBER (FILTERED STRICTLY TO REGISTERED ENTERED STUDENTS ONLY!)
+    // DRAW RANDOM NUMBER (FILTERED STRICTLY TO REGISTERED ACTIVE ENTERED STUDENTS ONLY!)
     async drawRandomNumber(type, eventId) {
-        // Query MongoDB ONLY for students who actually registered & entered the event
-        let students = await Student_js_1.Student.find({ isOnline: true }).select('name enrollmentNo tokenNo luckyNo spotlightNo');
-        if (!students || students.length === 0) {
-            // Fall back to all registered students in DB
-            students = await Student_js_1.Student.find({}).select('name enrollmentNo tokenNo luckyNo spotlightNo');
+        // 1. Get memory cached active sessions
+        const cachedStudents = cacheService_js_1.cacheService.getAllStudents();
+        // 2. Query MongoDB for registered students
+        let dbStudents = [];
+        try {
+            dbStudents = await Student_js_1.Student.find({}).select('name enrollmentNo tokenNo luckyNo spotlightNo');
         }
+        catch (e) { }
+        const studentsMap = new Map();
+        // Put DB students first
+        for (const s of dbStudents) {
+            const enroll = (s.enrollmentNo || '').toUpperCase();
+            if (enroll) {
+                studentsMap.set(enroll, {
+                    studentId: s._id,
+                    name: s.name,
+                    enrollmentNo: s.enrollmentNo,
+                    tokenNo: s.tokenNo,
+                    luckyNo: s.luckyNo || s.tokenNo,
+                    spotlightNo: s.spotlightNo || s.tokenNo
+                });
+            }
+        }
+        // Override / add cached active sessions
+        for (const s of cachedStudents) {
+            const enroll = (s.enrollmentNo || '').toUpperCase();
+            if (enroll) {
+                studentsMap.set(enroll, {
+                    studentId: s.studentId,
+                    name: s.name,
+                    enrollmentNo: s.enrollmentNo,
+                    tokenNo: s.tokenNo,
+                    luckyNo: s.luckyNo || s.tokenNo,
+                    spotlightNo: s.spotlightNo || s.tokenNo
+                });
+            }
+        }
+        const students = Array.from(studentsMap.values());
         if (!students || students.length === 0) {
-            throw new Error('No students have entered the event arena yet. Ask students to scan QR code!');
+            throw new Error('No active students have entered the event arena yet. Ask students to scan QR code!');
         }
         const randomIndex = Math.floor(Math.random() * students.length);
         const selectedStudent = students[randomIndex];
         const drawnNumber = type === 'SPOTLIGHT' ? selectedStudent.spotlightNo : selectedStudent.luckyNo;
+        const candidates = students.map(s => ({
+            name: s.name,
+            enrollmentNo: s.enrollmentNo,
+            tokenNo: s.tokenNo,
+            spotlightNo: s.spotlightNo,
+            luckyNo: s.luckyNo,
+            number: type === 'SPOTLIGHT' ? s.spotlightNo : s.luckyNo
+        }));
         if (this.io) {
             this.io.to(`auditorium:${eventId}`).to('auditorium:FRESHER2026').emit('AUDITORIUM_UPDATED', {
                 state: type === 'SPOTLIGHT' ? 'SPOTLIGHT_DRAW' : 'LUCKY_DRAW',
@@ -497,6 +537,7 @@ class GameEngine {
                     number: drawnNumber,
                     studentName: selectedStudent.name,
                     tokenNo: selectedStudent.tokenNo,
+                    candidates,
                     type
                 }
             });
@@ -504,10 +545,11 @@ class GameEngine {
                 type,
                 number: drawnNumber,
                 student: selectedStudent,
+                candidates,
                 registeredCount: students.length
             });
         }
-        return { number: drawnNumber, student: selectedStudent, registeredCount: students.length };
+        return { number: drawnNumber, student: selectedStudent, registeredCount: students.length, candidates };
     }
 }
 exports.GameEngine = GameEngine;

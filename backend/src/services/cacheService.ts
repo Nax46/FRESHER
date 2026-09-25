@@ -73,6 +73,18 @@ class InMemoryCache {
     return this.getStudentCount();
   }
 
+  public getAllStudents() {
+    const list: any[] = [];
+    const seen = new Set<string>();
+    for (const session of this.studentSessions.values()) {
+      if (session.enrollmentNo && !seen.has(session.enrollmentNo.toUpperCase())) {
+        seen.add(session.enrollmentNo.toUpperCase());
+        list.push(session);
+      }
+    }
+    return list;
+  }
+
   public clearAllStudentSessions(): void {
     this.studentSessions.clear();
   }

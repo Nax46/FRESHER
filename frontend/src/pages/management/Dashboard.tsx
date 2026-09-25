@@ -39,6 +39,7 @@ export const Dashboard: React.FC = () => {
 
   const [drawResult, setDrawResult] = useState<{ type: string; number: number; student: any } | null>(null);
   const [drawing, setDrawing] = useState(false);
+  const [shuffleState, setShuffleState] = useState<{ isShuffling: boolean; currentNumber?: number | string; currentName?: string; currentToken?: number | string }>({ isShuffling: false });
   const [activeTab, setActiveTab] = useState<'control' | 'library' | 'auditorium'>('control');
 
   useEffect(() => {
@@ -211,20 +212,49 @@ export const Dashboard: React.FC = () => {
 
   const handleDrawNumber = async (type: 'SPOTLIGHT' | 'LUCKY') => {
     setDrawing(true);
+    setDrawResult(null);
+    setShuffleState({ isShuffling: true, currentNumber: '...', currentName: 'Shuffling active users...', currentToken: '...' });
+
     try {
       const res = await axios.post('/api/v1/admin/draw-number', { type }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data.success) {
-        setDrawResult({
-          type,
-          number: res.data.data.number,
-          student: res.data.data.student
-        });
+        const { number, student, candidates } = res.data.data;
+        const candidateList = candidates && candidates.length > 0
+          ? candidates
+          : [{ name: student.name, tokenNo: student.tokenNo, number }];
+
+        let count = 0;
+        const interval = setInterval(() => {
+          const randIndex = Math.floor(Math.random() * candidateList.length);
+          const item = candidateList[randIndex];
+          setShuffleState({
+            isShuffling: true,
+            currentNumber: item.number,
+            currentName: item.name,
+            currentToken: item.tokenNo
+          });
+          count++;
+          if (count >= 35) {
+            clearInterval(interval);
+            setShuffleState({ isShuffling: false });
+            setDrawResult({
+              type,
+              number,
+              student
+            });
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            setDrawing(false);
+          }
+        }, 60);
+      } else {
+        setShuffleState({ isShuffling: false });
+        setDrawing(false);
       }
     } catch (err: any) {
       alert(err.response?.data?.error || 'Draw failed');
-    } finally {
+      setShuffleState({ isShuffling: false });
       setDrawing(false);
     }
   };
@@ -519,16 +549,37 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            {drawResult && (
-              <div className="bg-slate-900 border border-cyan-500/40 rounded-xl p-4 text-center space-y-1">
-                <span className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-widest">
-                  Selected {drawResult.type} Number
-                </span>
-                <div className="text-4xl font-black text-amber-300 py-1">
+            {shuffleState.isShuffling && (
+              <div className="bg-slate-900 border-2 border-cyan-400 rounded-xl p-4 text-center space-y-2 animate-pulse shadow-lg shadow-cyan-500/30">
+                <div className="flex items-center justify-center space-x-2 text-cyan-300">
+                  <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+                  <span className="text-[11px] font-black uppercase tracking-widest">
+                    🎲 SHUFFLING ACTIVE ENTERED USERS ONLY...
+                  </span>
+                </div>
+                <div className="text-5xl font-black text-amber-300 tracking-wider py-1 font-mono">
+                  #{shuffleState.currentNumber}
+                </div>
+                <div className="text-xs font-bold text-slate-200">
+                  {shuffleState.currentName} {shuffleState.currentToken !== '...' && `(Token #${shuffleState.currentToken})`}
+                </div>
+              </div>
+            )}
+
+            {!shuffleState.isShuffling && drawResult && (
+              <div className="bg-slate-900 border border-emerald-500/60 rounded-xl p-4 text-center space-y-2 shadow-xl shadow-emerald-500/20 animate-countdown">
+                <div className="flex items-center justify-center space-x-1 text-emerald-400 text-[10px] font-black uppercase tracking-widest">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>SELECTED ACTIVE {drawResult.type} PARTICIPANT</span>
+                </div>
+                <div className="text-5xl font-black text-amber-300 py-1 font-mono glow-gold">
                   #{drawResult.number}
                 </div>
-                <div className="text-xs font-bold text-white">
-                  Student: {drawResult.student?.name} (Token #{drawResult.student?.tokenNo})
+                <div className="text-sm font-extrabold text-white">
+                  Student: <span className="text-cyan-300">{drawResult.student?.name}</span>
+                </div>
+                <div className="inline-block bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[11px] font-bold px-3 py-0.5 rounded-full">
+                  Token #{drawResult.student?.tokenNo} • Enrollment #{drawResult.student?.enrollmentNo}
                 </div>
               </div>
             )}
