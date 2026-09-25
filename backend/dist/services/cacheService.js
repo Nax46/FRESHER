@@ -76,7 +76,14 @@ class InMemoryCache {
         return uniqueEnrollments.size;
     }
     getOnlineStudentCount() {
-        return this.getStudentCount();
+        const uniqueActiveEnrollments = new Set();
+        const now = Date.now();
+        for (const session of this.studentSessions.values()) {
+            if (session.enrollmentNo && session.isOnline && (now - (session.lastActiveAt || 0) < 120000)) {
+                uniqueActiveEnrollments.add(session.enrollmentNo.toUpperCase());
+            }
+        }
+        return uniqueActiveEnrollments.size;
     }
     getAllStudents() {
         const list = [];

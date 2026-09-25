@@ -70,24 +70,37 @@ const DEFAULT_GAMES = [
 ];
 const getDashboardMetrics = async (req, res) => {
     try {
-        let totalStudents = cacheService_js_1.cacheService.getStudentCount();
-        let onlineStudents = cacheService_js_1.cacheService.getOnlineStudentCount();
-        let totalGames = DEFAULT_GAMES.length; // 4 core games
-        let totalWinners = 0;
-        let totalTokens = 0;
+        const cacheTotal = cacheService_js_1.cacheService.getStudentCount();
+        const cacheOnline = cacheService_js_1.cacheService.getOnlineStudentCount();
+        let dbTotal = 0;
+        let dbOnline = 0;
+        let dbWinners = 0;
         try {
-            const dbTotal = await Student_js_1.Student.countDocuments();
-            const dbOnline = await Student_js_1.Student.countDocuments({
-                isOnline: true,
-                lastActiveAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
-            });
-            totalStudents = Math.max(totalStudents, dbTotal);
-            onlineStudents = Math.max(onlineStudents, dbOnline);
-            totalTokens = totalStudents;
-            const dbWinners = await Winner_js_1.Winner.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED'] } });
-            totalWinners = dbWinners;
+            dbTotal = await Promise.race([
+                Student_js_1.Student.countDocuments(),
+                new Promise((res) => setTimeout(() => res(0), 200))
+            ]);
+            dbOnline = await Promise.race([
+                Student_js_1.Student.countDocuments({
+                    $or: [
+                        { isOnline: true },
+                        { lastActiveAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) } }
+                    ]
+                }),
+                new Promise((res) => setTimeout(() => res(0), 200))
+            ]);
+            dbWinners = await Promise.race([
+                Winner_js_1.Winner.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED'] } }),
+                new Promise((res) => setTimeout(() => res(0), 200))
+            ]);
         }
         catch (dbErr) { }
+        const totalStudents = Math.max(cacheTotal, dbTotal);
+        let onlineStudents = Math.max(cacheOnline, dbOnline);
+        if (onlineStudents > totalStudents)
+            onlineStudents = totalStudents;
+        const totalWinners = dbWinners;
+        const totalTokens = totalStudents;
         const activeGame = cacheService_js_1.cacheService.getActiveGame();
         let currentGameData = null;
         if (activeGame) {
@@ -130,7 +143,7 @@ const getDashboardMetrics = async (req, res) => {
                 metrics: {
                     totalStudents,
                     onlineStudents,
-                    totalGames,
+                    totalGames: 4,
                     totalWinners,
                     totalTokens: totalStudents
                 },

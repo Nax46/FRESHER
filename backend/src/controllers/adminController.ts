@@ -69,25 +69,38 @@ const DEFAULT_GAMES = [
 
 export const getDashboardMetrics = async (req: Request, res: Response) => {
   try {
-    let totalStudents = cacheService.getStudentCount();
-    let onlineStudents = cacheService.getOnlineStudentCount();
-    let totalGames = DEFAULT_GAMES.length; // 4 core games
-    let totalWinners = 0;
-    let totalTokens = 0;
+    const cacheTotal = cacheService.getStudentCount();
+    const cacheOnline = cacheService.getOnlineStudentCount();
+
+    let dbTotal = 0;
+    let dbOnline = 0;
+    let dbWinners = 0;
 
     try {
-      const dbTotal = await Student.countDocuments();
-      const dbOnline = await Student.countDocuments({
-        isOnline: true,
-        lastActiveAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
-      });
-      totalStudents = Math.max(totalStudents, dbTotal);
-      onlineStudents = Math.max(onlineStudents, dbOnline);
-      totalTokens = totalStudents;
-
-      const dbWinners = await Winner.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED'] } });
-      totalWinners = dbWinners;
+      dbTotal = await Promise.race([
+        Student.countDocuments(),
+        new Promise<number>((res) => setTimeout(() => res(0), 200))
+      ]);
+      dbOnline = await Promise.race([
+        Student.countDocuments({
+          $or: [
+            { isOnline: true },
+            { lastActiveAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) } }
+          ]
+        }),
+        new Promise<number>((res) => setTimeout(() => res(0), 200))
+      ]);
+      dbWinners = await Promise.race([
+        Winner.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED'] } }),
+        new Promise<number>((res) => setTimeout(() => res(0), 200))
+      ]);
     } catch (dbErr) {}
+
+    const totalStudents = Math.max(cacheTotal, dbTotal);
+    let onlineStudents = Math.max(cacheOnline, dbOnline);
+    if (onlineStudents > totalStudents) onlineStudents = totalStudents;
+    const totalWinners = dbWinners;
+    const totalTokens = totalStudents;
 
     const activeGame = cacheService.getActiveGame();
 
@@ -133,7 +146,7 @@ export const getDashboardMetrics = async (req: Request, res: Response) => {
         metrics: {
           totalStudents,
           onlineStudents,
-          totalGames,
+          totalGames: 4,
           totalWinners,
           totalTokens: totalStudents
         },
