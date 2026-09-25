@@ -15,6 +15,7 @@ export interface IStudent extends Document {
 
 const StudentSchema: Schema = new Schema(
   {
+    _id: { type: String },
     name: { type: String, required: true, trim: true },
     enrollmentNo: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
     tokenNo: { type: Number, required: true, unique: true, index: true },

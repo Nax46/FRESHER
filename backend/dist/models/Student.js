@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Student = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const StudentSchema = new mongoose_1.Schema({
+    _id: { type: String },
     name: { type: String, required: true, trim: true },
     enrollmentNo: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
     tokenNo: { type: Number, required: true, unique: true, index: true },
