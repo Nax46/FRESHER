@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStudentStore } from '../../store/useStudentStore';
 import { TokenCard } from '../../components/TokenCard';
 import { socket } from '../../sockets/socketClient';
-import { Gamepad2, Hourglass, Play, CheckCircle, Trophy, Sparkles } from 'lucide-react';
+import { Gamepad2, Hourglass, Play, CheckCircle, Trophy, Sparkles, LogOut } from 'lucide-react';
 import axios from 'axios';
 
 export const StudentArena: React.FC = () => {
@@ -12,6 +12,16 @@ export const StudentArena: React.FC = () => {
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+
+  const handleStudentLogout = () => {
+    if (window.confirm('🚪 Are you sure you want to log out of the Fresher Student Arena?')) {
+      if (profile?.studentId) {
+        socket.emit('STUDENT_LOGOUT', { studentId: profile.studentId });
+      }
+      reset();
+      navigate('/student');
+    }
+  };
 
   useEffect(() => {
     if (!profile) {
@@ -124,7 +134,23 @@ export const StudentArena: React.FC = () => {
   if (!profile) return null;
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-5">
+    <div className="max-w-md mx-auto p-4 space-y-4">
+      {/* Student Arena Header Bar */}
+      <div className="flex items-center justify-between glass-card p-3 rounded-2xl border border-purple-500/20 shadow-md">
+        <div className="flex items-center space-x-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+          <span className="text-xs font-black uppercase tracking-wider text-purple-300">STUDENT ARENA</span>
+        </div>
+        <button
+          onClick={handleStudentLogout}
+          className="flex items-center space-x-1.5 px-3 py-1.5 bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+          title="Logout of Student Session"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Logout</span>
+        </button>
+      </div>
+
       {/* Student Token Card */}
       <TokenCard
         name={profile.name}

@@ -565,8 +565,8 @@ export class GameEngine {
           name: s.name,
           enrollmentNo: s.enrollmentNo,
           tokenNo: s.tokenNo,
-          luckyNo: s.luckyNo || s.tokenNo,
-          spotlightNo: s.spotlightNo || s.tokenNo
+          luckyNo: s.luckyNo || (s.tokenNo + 900),
+          spotlightNo: s.spotlightNo || (s.tokenNo + 500)
         });
       }
     }
@@ -580,8 +580,8 @@ export class GameEngine {
           name: s.name,
           enrollmentNo: s.enrollmentNo,
           tokenNo: s.tokenNo,
-          luckyNo: s.luckyNo || s.tokenNo,
-          spotlightNo: s.spotlightNo || s.tokenNo
+          luckyNo: s.luckyNo || (s.tokenNo + 900),
+          spotlightNo: s.spotlightNo || (s.tokenNo + 500)
         });
       }
     }

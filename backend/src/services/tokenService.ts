@@ -1,23 +1,23 @@
 let currentTokenCounter = 0;
-let currentLuckyCounter = 100;
-let currentSpotlightCounter = 10;
+let currentSpotlightCounter = 500;
+let currentLuckyCounter = 900;
 
 export class TokenService {
   public static async generateUniqueTokens(): Promise<{ tokenNo: number; luckyNo: number; spotlightNo: number }> {
     currentTokenCounter += 1;
-    currentLuckyCounter += 1;
     currentSpotlightCounter += 1;
+    currentLuckyCounter += 1;
 
     return {
       tokenNo: currentTokenCounter,
-      luckyNo: currentLuckyCounter,
-      spotlightNo: currentSpotlightCounter
+      spotlightNo: currentSpotlightCounter,
+      luckyNo: currentLuckyCounter
     };
   }
 
   public static resetCounters() {
     currentTokenCounter = 0;
-    currentLuckyCounter = 100;
-    currentSpotlightCounter = 10;
+    currentSpotlightCounter = 500;
+    currentLuckyCounter = 900;
   }
 }
