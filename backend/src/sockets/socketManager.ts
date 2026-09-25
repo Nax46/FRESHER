@@ -41,6 +41,7 @@ export const initializeSocketManager = (io: SocketServer) => {
 
       if (studentId) {
         socket.data.studentId = studentId;
+        cacheService.touchStudentSession(studentId);
         Student.findByIdAndUpdate(studentId, { isOnline: true, socketId: socket.id, lastActiveAt: new Date() })
           .then(() => broadcastMetrics(io))
           .catch(() => {});
@@ -51,6 +52,7 @@ export const initializeSocketManager = (io: SocketServer) => {
 
     socket.on('PING_HEARTBEAT', () => {
       if (socket.data.studentId) {
+        cacheService.touchStudentSession(socket.data.studentId);
         Student.findByIdAndUpdate(socket.data.studentId, { isOnline: true, lastActiveAt: new Date() }).catch(() => {});
       }
     });
@@ -73,6 +75,10 @@ export const initializeSocketManager = (io: SocketServer) => {
     socket.on('disconnect', () => {
       logger.info({ socketId: socket.id }, 'Socket.IO client disconnected');
       if (socket.data.studentId) {
+        const student = cacheService.getStudentBySession(socket.data.studentId);
+        if (student) {
+          student.isOnline = false;
+        }
         Student.findByIdAndUpdate(socket.data.studentId, { isOnline: false, lastActiveAt: new Date() })
           .then(() => broadcastMetrics(io))
           .catch(() => {});

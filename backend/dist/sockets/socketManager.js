@@ -38,6 +38,7 @@ const initializeSocketManager = (io) => {
             pino_js_1.logger.info({ socketId: socket.id, eventId }, 'Client joined event room');
             if (studentId) {
                 socket.data.studentId = studentId;
+                cacheService_js_1.cacheService.touchStudentSession(studentId);
                 Student_js_1.Student.findByIdAndUpdate(studentId, { isOnline: true, socketId: socket.id, lastActiveAt: new Date() })
                     .then(() => (0, exports.broadcastMetrics)(io))
                     .catch(() => { });
@@ -48,6 +49,7 @@ const initializeSocketManager = (io) => {
         });
         socket.on('PING_HEARTBEAT', () => {
             if (socket.data.studentId) {
+                cacheService_js_1.cacheService.touchStudentSession(socket.data.studentId);
                 Student_js_1.Student.findByIdAndUpdate(socket.data.studentId, { isOnline: true, lastActiveAt: new Date() }).catch(() => { });
             }
         });
@@ -67,6 +69,10 @@ const initializeSocketManager = (io) => {
         socket.on('disconnect', () => {
             pino_js_1.logger.info({ socketId: socket.id }, 'Socket.IO client disconnected');
             if (socket.data.studentId) {
+                const student = cacheService_js_1.cacheService.getStudentBySession(socket.data.studentId);
+                if (student) {
+                    student.isOnline = false;
+                }
                 Student_js_1.Student.findByIdAndUpdate(socket.data.studentId, { isOnline: false, lastActiveAt: new Date() })
                     .then(() => (0, exports.broadcastMetrics)(io))
                     .catch(() => { });

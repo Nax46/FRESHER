@@ -29,7 +29,7 @@ const StudentSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// MongoDB Native TTL Index: Auto-delete student document if inactive for 10 minutes (600 seconds)
-StudentSchema.index({ lastActiveAt: 1 }, { expireAfterSeconds: 600 });
+// MongoDB Native TTL Index: Auto-delete student document after 24 hours (86400 seconds)
+StudentSchema.index({ registeredAt: 1 }, { expireAfterSeconds: 86400 });
 
 export const Student = mongoose.model<IStudent>('Student', StudentSchema);

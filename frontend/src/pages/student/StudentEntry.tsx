@@ -23,9 +23,11 @@ export const StudentEntry: React.FC = () => {
     setError('');
 
     try {
+      const storedProfile = JSON.parse(localStorage.getItem('fresher_student_profile') || 'null');
       const res = await axios.post('/api/v1/event/enter', {
         name: name.trim(),
-        enrollmentNo: enrollmentNo.trim()
+        enrollmentNo: enrollmentNo.trim(),
+        sessionId: storedProfile?.sessionId
       });
 
       if (res.data.success) {

@@ -8,7 +8,7 @@ import v4 from 'crypto';
 
 export const enterEvent = async (req: Request, res: Response) => {
   try {
-    const { name, enrollmentNo } = req.body;
+    const { name, enrollmentNo, sessionId: incomingSessionId } = req.body;
     if (!name || !enrollmentNo) {
       return res.status(400).json({ success: false, error: 'Full Name and Enrollment Number are required.' });
     }
@@ -16,10 +16,40 @@ export const enterEvent = async (req: Request, res: Response) => {
     const upperEnrollment = enrollmentNo.toUpperCase().trim();
     const cleanName = name.trim();
 
-    // 1. FAST PATH (Memory Cache): If student already logged in, reuse existing tokens & profile (< 1ms)
+    // 1. CONCURRENT LOGIN LOCK: Check if this enrollment is currently active on another device/browser
+    if (cacheService.isEnrollmentActive(upperEnrollment, incomingSessionId)) {
+      return res.status(400).json({
+        success: false,
+        error: `⚠️ Student with Enrollment Number '${upperEnrollment}' is ALREADY ACTIVE on another device! You cannot log in from multiple devices simultaneously.`
+      });
+    }
+
+    // 2. DB ACTIVE CHECK: Check MongoDB active session status
+    let existingDbStudent: any = null;
+    try {
+      existingDbStudent = await Promise.race([
+        Student.findOne({ enrollmentNo: upperEnrollment }),
+        new Promise((res) => setTimeout(() => res(null), 250))
+      ]);
+    } catch (err) {}
+
+    if (existingDbStudent && existingDbStudent.isOnline && existingDbStudent.lastActiveAt) {
+      const dbLastActive = new Date(existingDbStudent.lastActiveAt).getTime();
+      const isDbRecentlyActive = (Date.now() - dbLastActive) < 120000;
+      if (isDbRecentlyActive && incomingSessionId && existingDbStudent.sessionId && existingDbStudent.sessionId !== incomingSessionId) {
+        return res.status(400).json({
+          success: false,
+          error: `⚠️ Student with Enrollment Number '${upperEnrollment}' is ALREADY ACTIVE on another device! You cannot log in from multiple devices simultaneously.`
+        });
+      }
+    }
+
+    // 3. FAST PATH (Memory Cache): If student exists in memory cache (same session or inactive), reuse tokens!
     const cachedStudent = cacheService.getStudentByEnrollment(upperEnrollment);
     if (cachedStudent) {
       cachedStudent.name = cleanName;
+      cacheService.touchStudentSession(upperEnrollment);
+      Student.findByIdAndUpdate(cachedStudent.studentId, { name: cleanName, isOnline: true, lastActiveAt: new Date() }).catch(() => {});
       return res.json({
         success: true,
         data: {
@@ -34,16 +64,7 @@ export const enterEvent = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. FAST DB LOOKUP: Check if student already exists in Database by enrollment number
-    let existingDbStudent: any = null;
-    try {
-      existingDbStudent = await Promise.race([
-        Student.findOne({ enrollmentNo: upperEnrollment }),
-        new Promise((res) => setTimeout(() => res(null), 200)) // 200ms timeout for fast response
-      ]);
-    } catch (err) {}
-
-    // If existing student found in DB -> REUSE existing student record & tokens!
+    // 4. FAST DB REUSE: If existing student found in DB -> REUSE existing student record & tokens (NO DUPLICATE RECORD CREATED)!
     if (existingDbStudent) {
       const studentData = {
         studentId: existingDbStudent._id.toString(),
@@ -55,10 +76,9 @@ export const enterEvent = async (req: Request, res: Response) => {
         sessionId: existingDbStudent.sessionId || v4.randomUUID()
       };
 
-      // Register in memory cache for instant future lookups
+      // Register in memory cache
       cacheService.registerStudentSession(studentData.sessionId, studentData);
-      cacheService.registerStudentSession(upperEnrollment, studentData);
-      cacheService.registerStudentSession(studentData.studentId, studentData);
+      cacheService.touchStudentSession(upperEnrollment);
 
       // Async background update for name & activity heartbeat
       Student.findByIdAndUpdate(existingDbStudent._id, { name: cleanName, isOnline: true, lastActiveAt: new Date() }).catch(() => {});

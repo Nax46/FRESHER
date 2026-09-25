@@ -30,9 +30,21 @@ export interface ActiveGameState {
   }>;
 }
 
+export interface CachedStudentSession {
+  studentId: string;
+  name: string;
+  enrollmentNo: string;
+  tokenNo: number;
+  luckyNo: number;
+  spotlightNo: number;
+  sessionId: string;
+  lastActiveAt: number;
+  isOnline: boolean;
+}
+
 class InMemoryCache {
   private activeGame: ActiveGameState | null = null;
-  private studentSessions: Map<string, { studentId: string; name: string; enrollmentNo: string; tokenNo: number; luckyNo: number; spotlightNo: number; sessionId?: string }> = new Map();
+  private studentSessions: Map<string, CachedStudentSession> = new Map();
 
   public getActiveGame(): ActiveGameState | null {
     return this.activeGame;
@@ -42,8 +54,54 @@ class InMemoryCache {
     this.activeGame = game;
   }
 
-  public registerStudentSession(sessionId: string, studentData: { studentId: string; name: string; enrollmentNo: string; tokenNo: number; luckyNo: number; spotlightNo: number; sessionId?: string }): void {
-    this.studentSessions.set(sessionId, studentData);
+  public registerStudentSession(key: string, studentData: any): void {
+    const sessionObj: CachedStudentSession = {
+      studentId: studentData.studentId,
+      name: studentData.name,
+      enrollmentNo: studentData.enrollmentNo,
+      tokenNo: studentData.tokenNo,
+      luckyNo: studentData.luckyNo,
+      spotlightNo: studentData.spotlightNo,
+      sessionId: studentData.sessionId || key,
+      lastActiveAt: Date.now(),
+      isOnline: true
+    };
+    this.studentSessions.set(key, sessionObj);
+    if (studentData.sessionId) {
+      this.studentSessions.set(studentData.sessionId, sessionObj);
+    }
+    if (studentData.enrollmentNo) {
+      this.studentSessions.set(studentData.enrollmentNo.toUpperCase(), sessionObj);
+    }
+    if (studentData.studentId) {
+      this.studentSessions.set(studentData.studentId, sessionObj);
+    }
+  }
+
+  public touchStudentSession(identifier: string): void {
+    const session = this.getStudentByEnrollment(identifier) || this.studentSessions.get(identifier);
+    if (session) {
+      session.lastActiveAt = Date.now();
+      session.isOnline = true;
+    }
+  }
+
+  public isEnrollmentActive(enrollmentNo: string, incomingSessionId?: string): boolean {
+    const existing = this.getStudentByEnrollment(enrollmentNo);
+    if (!existing) return false;
+
+    // Active if marked online and updated within the last 2 minutes
+    const isRecentlyActive = existing.isOnline && (Date.now() - (existing.lastActiveAt || 0) < 120000);
+
+    if (!isRecentlyActive) return false;
+
+    // If incoming request is from the SAME active session ID (reconnect / refresh), allow it!
+    if (incomingSessionId && existing.sessionId && existing.sessionId === incomingSessionId) {
+      return false;
+    }
+
+    // Otherwise, it's a different session attempting duplicate login -> Block it!
+    return true;
   }
 
   public getStudentBySession(sessionId: string) {
@@ -52,7 +110,7 @@ class InMemoryCache {
 
   public getStudentByEnrollment(enrollmentNo: string) {
     for (const session of this.studentSessions.values()) {
-      if (session.enrollmentNo.toUpperCase() === enrollmentNo.toUpperCase()) {
+      if (session.enrollmentNo && session.enrollmentNo.toUpperCase() === enrollmentNo.toUpperCase()) {
         return session;
       }
     }

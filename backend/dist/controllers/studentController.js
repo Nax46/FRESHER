@@ -11,16 +11,44 @@ const pino_js_1 = require("../config/pino.js");
 const crypto_1 = __importDefault(require("crypto"));
 const enterEvent = async (req, res) => {
     try {
-        const { name, enrollmentNo } = req.body;
+        const { name, enrollmentNo, sessionId: incomingSessionId } = req.body;
         if (!name || !enrollmentNo) {
             return res.status(400).json({ success: false, error: 'Full Name and Enrollment Number are required.' });
         }
         const upperEnrollment = enrollmentNo.toUpperCase().trim();
         const cleanName = name.trim();
-        // 1. FAST PATH (Memory Cache): If student already logged in, reuse existing tokens & profile (< 1ms)
+        // 1. CONCURRENT LOGIN LOCK: Check if this enrollment is currently active on another device/browser
+        if (cacheService_js_1.cacheService.isEnrollmentActive(upperEnrollment, incomingSessionId)) {
+            return res.status(400).json({
+                success: false,
+                error: `⚠️ Student with Enrollment Number '${upperEnrollment}' is ALREADY ACTIVE on another device! You cannot log in from multiple devices simultaneously.`
+            });
+        }
+        // 2. DB ACTIVE CHECK: Check MongoDB active session status
+        let existingDbStudent = null;
+        try {
+            existingDbStudent = await Promise.race([
+                Student_js_1.Student.findOne({ enrollmentNo: upperEnrollment }),
+                new Promise((res) => setTimeout(() => res(null), 250))
+            ]);
+        }
+        catch (err) { }
+        if (existingDbStudent && existingDbStudent.isOnline && existingDbStudent.lastActiveAt) {
+            const dbLastActive = new Date(existingDbStudent.lastActiveAt).getTime();
+            const isDbRecentlyActive = (Date.now() - dbLastActive) < 120000;
+            if (isDbRecentlyActive && incomingSessionId && existingDbStudent.sessionId && existingDbStudent.sessionId !== incomingSessionId) {
+                return res.status(400).json({
+                    success: false,
+                    error: `⚠️ Student with Enrollment Number '${upperEnrollment}' is ALREADY ACTIVE on another device! You cannot log in from multiple devices simultaneously.`
+                });
+            }
+        }
+        // 3. FAST PATH (Memory Cache): If student exists in memory cache (same session or inactive), reuse tokens!
         const cachedStudent = cacheService_js_1.cacheService.getStudentByEnrollment(upperEnrollment);
         if (cachedStudent) {
             cachedStudent.name = cleanName;
+            cacheService_js_1.cacheService.touchStudentSession(upperEnrollment);
+            Student_js_1.Student.findByIdAndUpdate(cachedStudent.studentId, { name: cleanName, isOnline: true, lastActiveAt: new Date() }).catch(() => { });
             return res.json({
                 success: true,
                 data: {
@@ -34,16 +62,7 @@ const enterEvent = async (req, res) => {
                 }
             });
         }
-        // 2. FAST DB LOOKUP: Check if student already exists in Database by enrollment number
-        let existingDbStudent = null;
-        try {
-            existingDbStudent = await Promise.race([
-                Student_js_1.Student.findOne({ enrollmentNo: upperEnrollment }),
-                new Promise((res) => setTimeout(() => res(null), 200)) // 200ms timeout for fast response
-            ]);
-        }
-        catch (err) { }
-        // If existing student found in DB -> REUSE existing student record & tokens!
+        // 4. FAST DB REUSE: If existing student found in DB -> REUSE existing student record & tokens (NO DUPLICATE RECORD CREATED)!
         if (existingDbStudent) {
             const studentData = {
                 studentId: existingDbStudent._id.toString(),
@@ -54,10 +73,9 @@ const enterEvent = async (req, res) => {
                 spotlightNo: existingDbStudent.spotlightNo,
                 sessionId: existingDbStudent.sessionId || crypto_1.default.randomUUID()
             };
-            // Register in memory cache for instant future lookups
+            // Register in memory cache
             cacheService_js_1.cacheService.registerStudentSession(studentData.sessionId, studentData);
-            cacheService_js_1.cacheService.registerStudentSession(upperEnrollment, studentData);
-            cacheService_js_1.cacheService.registerStudentSession(studentData.studentId, studentData);
+            cacheService_js_1.cacheService.touchStudentSession(upperEnrollment);
             // Async background update for name & activity heartbeat
             Student_js_1.Student.findByIdAndUpdate(existingDbStudent._id, { name: cleanName, isOnline: true, lastActiveAt: new Date() }).catch(() => { });
             return res.json({
