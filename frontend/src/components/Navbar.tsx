@@ -1,9 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Gamepad2, ShieldCheck, Tv } from 'lucide-react';
+import { Gamepad2, ShieldCheck, Tv, UserCheck } from 'lucide-react';
+import { useManagementStore } from '../store/useManagementStore';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
+  const token = useManagementStore((state) => state.token);
+  const adminUser = useManagementStore((state) => state.adminUser);
 
   return (
     <nav className="sticky top-0 z-50 glass-card border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-4 py-3">
@@ -22,43 +25,46 @@ export const Navbar: React.FC = () => {
           </div>
         </Link>
 
-        <div className="flex items-center space-x-1 sm:space-x-2">
-          <Link
-            to="/student"
-            className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              location.pathname.startsWith('/student')
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <Gamepad2 className="w-3.5 h-3.5" />
-            <span>Student</span>
-          </Link>
+        {/* Only show Host Management & Stage Auditorium links if Admin is logged in */}
+        {token ? (
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            <span className="hidden md:inline-flex items-center space-x-1 text-[11px] font-extrabold text-purple-300 bg-purple-950/80 border border-purple-500/30 px-2.5 py-1 rounded-lg mr-1">
+              <UserCheck className="w-3.5 h-3.5 text-purple-400" />
+              <span>Host: {adminUser || 'Nax'}</span>
+            </span>
 
-          <Link
-            to="/management"
-            className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              location.pathname.startsWith('/management')
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Management</span>
-          </Link>
+            <Link
+              to="/management/dashboard"
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                location.pathname.startsWith('/management')
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Management</span>
+            </Link>
 
-          <Link
-            to="/auditorium"
-            className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              location.pathname.startsWith('/auditorium')
-                ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <Tv className="w-3.5 h-3.5" />
-            <span>Auditorium</span>
-          </Link>
-        </div>
+            <Link
+              to="/auditorium"
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                location.pathname.startsWith('/auditorium')
+                  ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Tv className="w-3.5 h-3.5" />
+              <span>Auditorium</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider flex items-center space-x-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span>Student Arena Live</span>
+            </span>
+          </div>
+        )}
       </div>
     </nav>
   );

@@ -5,8 +5,8 @@ import { ShieldCheck, Lock, User, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 
 export const Login: React.FC = () => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('fresher2026');
+  const [username, setUsername] = useState('Nax');
+  const [password, setPassword] = useState('Nax@2907');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();

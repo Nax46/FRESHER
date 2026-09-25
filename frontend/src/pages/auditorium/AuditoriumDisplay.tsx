@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useAuditoriumStore } from '../../store/useAuditoriumStore';
+import { useManagementStore } from '../../store/useManagementStore';
 import { socket } from '../../sockets/socketClient';
-import { Trophy, Sparkles, Star, Gamepad2, Hourglass, CheckCircle, Ticket, RefreshCw } from 'lucide-react';
+import { Trophy, Sparkles, Star, Gamepad2, Hourglass, CheckCircle, Ticket, RefreshCw, Lock, User, ShieldCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import axios from 'axios';
 
 export const AuditoriumDisplay: React.FC = () => {
   const { state, payload, setAuditoriumState } = useAuditoriumStore();
+  const { token, setAuth } = useManagementStore();
+  const [adminUser, setAdminUser] = useState('Nax');
+  const [adminPass, setAdminPass] = useState('Nax@2907');
+  const [loginError, setLoginError] = useState('');
+  const [authenticating, setAuthenticating] = useState(false);
+
   const [shuffleState, setShuffleState] = useState<{
     isShuffling: boolean;
     displayNumber: number | string;
@@ -14,7 +21,25 @@ export const AuditoriumDisplay: React.FC = () => {
     displayToken: number | string;
   }>({ isShuffling: false, displayNumber: '', displayName: '', displayToken: '' });
 
+  const handleAdminUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthenticating(true);
+    setLoginError('');
+    try {
+      const res = await axios.post('/api/v1/admin/login', { username: adminUser, password: adminPass });
+      if (res.data.success) {
+        setAuth(res.data.data.token, res.data.data.username);
+      }
+    } catch (err: any) {
+      setLoginError(err.response?.data?.error || 'Invalid Admin Credentials');
+    } finally {
+      setAuthenticating(false);
+    }
+  };
+
   useEffect(() => {
+    if (!token) return;
+
     // Join Auditorium socket room
     socket.emit('JOIN_AUDITORIUM_ROOM', { eventId: 'FRESHER2026' });
 
@@ -79,7 +104,7 @@ export const AuditoriumDisplay: React.FC = () => {
     return () => {
       socket.off('AUDITORIUM_UPDATED');
     };
-  }, []);
+  }, [token]);
 
   const fetchState = async () => {
     try {
@@ -89,6 +114,76 @@ export const AuditoriumDisplay: React.FC = () => {
       }
     } catch (err) {}
   };
+
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6 select-none">
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-pink-600/20 border border-pink-500/40 text-pink-400 shadow-2xl mb-2">
+            <Lock className="w-10 h-10" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-white uppercase">🔒 STAGE DISPLAY LOCKED</h1>
+            <p className="text-sm font-semibold text-slate-400 mt-1">Host Admin authentication required to access stage auditorium screen</p>
+          </div>
+
+          <div className="glass-card rounded-2xl p-6 border border-pink-500/30 text-left">
+            <form onSubmit={handleAdminUnlock} className="space-y-4">
+              {loginError && (
+                <div className="bg-red-500/20 border border-red-500/40 text-red-200 text-xs p-3 rounded-xl font-bold">
+                  {loginError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Host Username
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={adminUser}
+                    onChange={(e) => setAdminUser(e.target.value)}
+                    className="w-full pl-9 pr-4 py-3 bg-slate-900 border border-slate-700 focus:border-pink-500 rounded-xl text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-pink-500/30 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  Host Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    value={adminPass}
+                    onChange={(e) => setAdminPass(e.target.value)}
+                    className="w-full pl-9 pr-4 py-3 bg-slate-900 border border-slate-700 focus:border-pink-500 rounded-xl text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-pink-500/30 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={authenticating}
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-pink-600/30 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {authenticating ? 'Unlocking Stage Screen...' : 'UNLOCK AUDITORIUM DISPLAY'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden select-none">
