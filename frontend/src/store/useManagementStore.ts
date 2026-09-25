@@ -79,8 +79,8 @@ export interface ManagementState {
 }
 
 export const useManagementStore = create<ManagementState>((set) => ({
-  token: localStorage.getItem('fresher_admin_token') || 'demo_token',
-  adminUser: localStorage.getItem('fresher_admin_user') || 'admin',
+  token: localStorage.getItem('fresher_admin_token') || null,
+  adminUser: localStorage.getItem('fresher_admin_user') || null,
   metrics: {
     totalStudents: 0,
     onlineStudents: 0,

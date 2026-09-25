@@ -9,8 +9,8 @@ import axios from 'axios';
 export const AuditoriumDisplay: React.FC = () => {
   const { state, payload, setAuditoriumState } = useAuditoriumStore();
   const { token, setAuth } = useManagementStore();
-  const [adminUser, setAdminUser] = useState('Nax');
-  const [adminPass, setAdminPass] = useState('Nax@2907');
+  const [adminUser, setAdminUser] = useState('');
+  const [adminPass, setAdminPass] = useState('');
   const [loginError, setLoginError] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
 

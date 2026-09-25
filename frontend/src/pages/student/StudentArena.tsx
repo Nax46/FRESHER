@@ -4,6 +4,7 @@ import { useStudentStore } from '../../store/useStudentStore';
 import { TokenCard } from '../../components/TokenCard';
 import { socket } from '../../sockets/socketClient';
 import { Gamepad2, Hourglass, Play, CheckCircle, Trophy, Sparkles, LogOut } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import axios from 'axios';
 
 export const StudentArena: React.FC = () => {
@@ -12,6 +13,7 @@ export const StudentArena: React.FC = () => {
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [closedWinner, setClosedWinner] = useState<any | null>(null);
 
   const handleStudentLogout = () => {
     if (window.confirm('🚪 Are you sure you want to log out of the Fresher Student Arena?')) {
@@ -54,12 +56,14 @@ export const StudentArena: React.FC = () => {
       setGameState('GAME_AVAILABLE');
       setJoined(false);
       setSubmittedResult(null);
+      setClosedWinner(null);
     });
 
     socket.on('GAME_STARTED', (data) => {
       setLiveQuestion(data.question);
       setGameState('COUNTDOWN');
       setCountdown(3);
+      setClosedWinner(null);
 
       let timer = 3;
       const interval = setInterval(() => {
@@ -80,8 +84,38 @@ export const StudentArena: React.FC = () => {
       setGameState('QUESTION');
     });
 
-    socket.on('GAME_CLOSED', () => {
+    socket.on('GAME_CLOSED', (data) => {
+      if (data?.winnerCandidate) {
+        setClosedWinner(data.winnerCandidate);
+        if (profile?.studentId && (data.winnerCandidate.studentId === profile.studentId || data.winnerCandidate.studentId?._id === profile.studentId)) {
+          confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+        }
+      }
       setGameState('CLOSED');
+    });
+
+    socket.on('WINNER_CANDIDATE', (data) => {
+      if (data?.winnerCandidate) {
+        setClosedWinner(data.winnerCandidate);
+        if (profile?.studentId && (data.winnerCandidate.studentId === profile.studentId || data.winnerCandidate.studentId?._id === profile.studentId)) {
+          confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+        }
+      }
+    });
+
+    socket.on('WINNER_DECLARED', (data) => {
+      if (data?.winner) {
+        setClosedWinner(data.winner);
+        if (profile?.studentId && (data.winner.studentId === profile.studentId || data.winner.studentId?._id === profile.studentId)) {
+          confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+        }
+      }
+    });
+
+    socket.on('WINNER_APPROVED', (data) => {
+      if (data) {
+        setClosedWinner(data);
+      }
     });
 
     socket.on('FORCE_LOGOUT_ALL', (data) => {
@@ -96,6 +130,9 @@ export const StudentArena: React.FC = () => {
       socket.off('GAME_STARTED');
       socket.off('QUESTION_CHANGED');
       socket.off('GAME_CLOSED');
+      socket.off('WINNER_CANDIDATE');
+      socket.off('WINNER_DECLARED');
+      socket.off('WINNER_APPROVED');
       socket.off('FORCE_LOGOUT_ALL');
     };
   }, [profile]);
@@ -250,16 +287,60 @@ export const StudentArena: React.FC = () => {
           </div>
         )}
 
-        {/* State 6: CLOSED */}
+        {/* State 6: CLOSED & WINNER DISPLAY */}
         {gameState === 'CLOSED' && (
-          <div className="py-8 text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-              <Trophy className="w-8 h-8" />
+          <div className="py-4 space-y-4">
+            <div className="text-center space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30">
+                🏁 GAME COMPLETED
+              </span>
+              <h3 className="text-xl font-black text-white mt-1">⏰ TIME UP — GAME CLOSED</h3>
             </div>
-            <div>
-              <h3 className="text-xl font-black text-white">⏰ TIME UP — GAME CLOSED</h3>
-              <p className="text-xs text-slate-400 mt-1">Check the Auditorium screen for official winner announcement!</p>
-            </div>
+
+            {closedWinner ? (
+              (profile?.studentId && (closedWinner.studentId === profile.studentId || closedWinner.studentId?._id === profile.studentId)) ? (
+                // 🏆 LOGGED IN STUDENT IS THE WINNER!
+                <div className="bg-gradient-to-br from-amber-950/90 via-slate-900 to-amber-950/90 border-2 border-amber-400 rounded-2xl p-6 text-center space-y-3 shadow-2xl shadow-amber-500/40 animate-pulse-glow glow-gold">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-400 text-slate-950 shadow-xl mb-1">
+                    <Trophy className="w-10 h-10 fill-current" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-widest text-amber-300">🎉 CONGRATULATIONS! YOU WON! 🎉</span>
+                    <h2 className="text-3xl font-black text-white mt-1">{profile.name}</h2>
+                    <p className="text-xs font-bold text-amber-200 mt-1">
+                      Token #{profile.tokenNo} | Response Time: {((closedWinner.responseTimeMs || 0) / 1000).toFixed(2)}s
+                    </p>
+                  </div>
+                  <div className="bg-amber-400/20 border border-amber-400/50 py-2 px-4 rounded-xl inline-block text-amber-300 font-extrabold text-sm">
+                    🏆 Cash Prize: ₹{closedWinner.prizeAmount || availableGame?.prize || 50}
+                  </div>
+                </div>
+              ) : (
+                // 🏆 ANOTHER STUDENT WON
+                <div className="bg-gradient-to-br from-slate-900 via-purple-950/50 to-slate-900 border border-amber-500/50 rounded-2xl p-5 text-center space-y-3 shadow-xl">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 mb-1">
+                    <Trophy className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">🏆 OFFICIAL GAME WINNER</span>
+                    <h3 className="text-2xl font-black text-white mt-1">{closedWinner.name || closedWinner.studentName}</h3>
+                    <div className="flex items-center justify-center space-x-2 text-xs font-bold text-slate-300 mt-1">
+                      <span className="bg-purple-500/20 text-purple-300 px-2.5 py-0.5 rounded-md border border-purple-500/30">
+                        Token #{closedWinner.tokenNo}
+                      </span>
+                      <span className="bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-md border border-amber-500/30">
+                        Time: {((closedWinner.responseTimeMs || 0) / 1000).toFixed(2)}s
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-5 text-center text-slate-400 space-y-1">
+                <p className="text-xs font-semibold">No correct answer was submitted for this game.</p>
+                <p className="text-[11px] text-slate-500">Stay ready for the next challenge!</p>
+              </div>
+            )}
           </div>
         )}
       </div>

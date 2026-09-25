@@ -5,8 +5,8 @@ import { ShieldCheck, Lock, User, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 
 export const Login: React.FC = () => {
-  const [username, setUsername] = useState('Nax');
-  const [password, setPassword] = useState('Nax@2907');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -60,6 +60,7 @@ export const Login: React.FC = () => {
                 <input
                   type="text"
                   required
+                  placeholder="Enter Admin Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-9 pr-4 py-3 bg-slate-900/90 border border-slate-700 focus:border-indigo-500 rounded-xl text-sm font-medium text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
@@ -78,6 +79,7 @@ export const Login: React.FC = () => {
                 <input
                   type="password"
                   required
+                  placeholder="Enter Admin Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-9 pr-4 py-3 bg-slate-900/90 border border-slate-700 focus:border-indigo-500 rounded-xl text-sm font-medium text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"

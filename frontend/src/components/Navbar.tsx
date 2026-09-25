@@ -59,10 +59,18 @@ export const Navbar: React.FC = () => {
           </div>
         ) : (
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider flex items-center space-x-1.5">
+            <span className="hidden sm:inline-flex text-xs font-extrabold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full uppercase tracking-wider items-center space-x-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
               <span>Student Arena Live</span>
             </span>
+
+            <Link
+              to="/management/login"
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-extrabold bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 transition-all shadow-md"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin Login</span>
+            </Link>
           </div>
         )}
       </div>

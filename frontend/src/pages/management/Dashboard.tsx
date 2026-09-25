@@ -174,8 +174,12 @@ export const Dashboard: React.FC = () => {
       const res = await axios.post(`/api/v1/admin/games/${currentGame.gameId}/close`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.data.success && res.data.data.winnerCandidate) {
-        setWinnerCandidate(res.data.data.winnerCandidate);
+      if (res.data.success) {
+        if (res.data.data.winnerCandidate) {
+          setWinnerCandidate(res.data.data.winnerCandidate);
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        }
+        fetchDashboard();
       }
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to close game');

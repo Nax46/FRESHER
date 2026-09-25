@@ -394,6 +394,7 @@ export class GameEngine {
 
     let winnerCandidateData: any = null;
 
+    // 1. Try memory winner candidate lock
     if (active.winnerCandidateId) {
       const student = await Student.findById(active.winnerCandidateId);
       if (student) {
@@ -402,42 +403,124 @@ export class GameEngine {
           gameId,
           studentId: student._id,
           status: 'CANDIDATE',
-          prizeAmount: active.prize,
+          prizeAmount: active.prize || 50,
           responseTimeMs: active.winnerCandidateResponseTime,
           selectedAnswerText: currentQ?.options[currentQ.correctOptionIndex]
         });
 
         winnerCandidateData = {
           winnerId: winner._id,
-          studentId: student._id,
+          studentId: student._id.toString(),
           name: student.name,
           tokenNo: student.tokenNo,
           enrollmentNo: student.enrollmentNo,
           responseTimeMs: active.winnerCandidateResponseTime,
-          correctAnswer: currentQ?.options[currentQ.correctOptionIndex]
+          correctAnswer: currentQ?.options[currentQ.correctOptionIndex],
+          gameTitle: active.title,
+          prizeAmount: active.prize || 50
         };
       }
     }
 
-    if (this.io) {
-      this.io.emit('GAME_CLOSED', { gameId });
-      this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('GAME_CLOSED', { gameId });
+    // 2. Fallback: Search active.submissions map for fastest correct answer
+    if (!winnerCandidateData && active.submissions.size > 0) {
+      let fastestStudentId: string | null = null;
+      let minTime = Infinity;
+      for (const [studentId, sub] of active.submissions.entries()) {
+        if (sub.isCorrect && sub.responseTimeMs < minTime) {
+          minTime = sub.responseTimeMs;
+          fastestStudentId = studentId;
+        }
+      }
+      if (fastestStudentId) {
+        const student = await Student.findById(fastestStudentId);
+        if (student) {
+          const currentQ = active.questions[active.currentQuestionIndex];
+          const winner = await Winner.create({
+            gameId,
+            studentId: student._id,
+            status: 'CANDIDATE',
+            prizeAmount: active.prize || 50,
+            responseTimeMs: minTime,
+            selectedAnswerText: currentQ?.options[currentQ.correctOptionIndex]
+          });
 
-      this.io.emit('WINNER_CANDIDATE', {
+          winnerCandidateData = {
+            winnerId: winner._id,
+            studentId: student._id.toString(),
+            name: student.name,
+            tokenNo: student.tokenNo,
+            enrollmentNo: student.enrollmentNo,
+            responseTimeMs: minTime,
+            correctAnswer: currentQ?.options[currentQ.correctOptionIndex],
+            gameTitle: active.title,
+            prizeAmount: active.prize || 50
+          };
+        }
+      }
+    }
+
+    // 3. Fallback: Search MongoDB Submission table for fastest correct submission
+    if (!winnerCandidateData && mongoose.connection.readyState === 1) {
+      try {
+        const fastestSub = await Submission.findOne({ gameId, isCorrect: true })
+          .sort({ responseTimeMs: 1 })
+          .populate('studentId');
+        if (fastestSub && fastestSub.studentId) {
+          const student: any = fastestSub.studentId;
+          const currentQ = active.questions[active.currentQuestionIndex];
+          const winner = await Winner.create({
+            gameId,
+            studentId: student._id,
+            status: 'CANDIDATE',
+            prizeAmount: active.prize || 50,
+            responseTimeMs: fastestSub.responseTimeMs,
+            selectedAnswerText: currentQ?.options[currentQ.correctOptionIndex]
+          });
+
+          winnerCandidateData = {
+            winnerId: winner._id,
+            studentId: student._id.toString(),
+            name: student.name,
+            tokenNo: student.tokenNo,
+            enrollmentNo: student.enrollmentNo,
+            responseTimeMs: fastestSub.responseTimeMs,
+            correctAnswer: currentQ?.options[currentQ.correctOptionIndex],
+            gameTitle: active.title,
+            prizeAmount: active.prize || 50
+          };
+        }
+      } catch (err) {
+        logger.error({ err }, 'Error querying DB for fallback winner candidate');
+      }
+    }
+
+    if (this.io) {
+      const closedPayload = {
         gameId,
         winnerCandidate: winnerCandidateData,
         totalSubmissions: active.submissions.size
-      });
-      this.io.to(`management:${eventId}`).to('management:FRESHER2026').emit('WINNER_CANDIDATE', {
-        gameId,
-        winnerCandidate: winnerCandidateData,
-        totalSubmissions: active.submissions.size
-      });
+      };
+
+      this.io.emit('GAME_CLOSED', closedPayload);
+      this.io.to(`event:${eventId}`).to('event:FRESHER2026').emit('GAME_CLOSED', closedPayload);
+
+      this.io.emit('WINNER_CANDIDATE', closedPayload);
+      this.io.to(`management:${eventId}`).to('management:FRESHER2026').emit('WINNER_CANDIDATE', closedPayload);
+
+      if (winnerCandidateData) {
+        this.io.emit('WINNER_DECLARED', {
+          gameId,
+          gameTitle: active.title,
+          winner: winnerCandidateData
+        });
+      }
 
       this.io.emit('AUDITORIUM_UPDATED', {
         state: 'GAME_CLOSED',
         payload: {
-          gameTitle: active.title
+          gameTitle: active.title,
+          winnerCandidate: winnerCandidateData
         }
       });
     }
